@@ -33,7 +33,7 @@ Antes de ejecutar el proyecto, asegúrate de tener instalado:
 
 ```
 git clone https://github.com/AndrishAraiza0412/centinela.git
-cd ServiceStatusApp
+cd centinela
 ```
 
 2. Instalen las dependencias:
