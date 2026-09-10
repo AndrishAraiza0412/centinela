@@ -1,56 +1,64 @@
-# Welcome to your Expo app 👋
+**Centinela**
 
-This is an [Expo](https://expo.dev) project created with [`create-expo-app`](https://www.npmjs.com/package/create-expo-app).
+Aplicación móvil desarrollada con React Native y Expo que permite consultar en tiempo real el estado operativo de diversos servicios de TI (como GitHub, AWS, Stripe) consumiendo una API pública. ¡Bienvenidos a su nueva aplicación Expo! Este proyecto utiliza enrutamiento basado en archivos (file-based routing), por lo que pueden comenzar a desarrollar editando los archivos directamente dentro del directorio `app`.
 
-## Get started
+**Características**
 
-1. Install dependencies
+* Búsqueda en tiempo real del estatus de servicios tecnológicos.
+* Interfaz limpia con manejo de estados de carga y errores.
+* Desarrollada con TypeScript para un tipado estricto y seguro.
+* Arquitectura basada en Expo Router.
 
-   ```bash
-   npm install
-   ```
+**Tecnologías Utilizadas**
 
-2. Start the app
+* [React Native](https://reactnative.dev/)
+* [Expo](https://expo.dev/) (SDK 57)
+* [TypeScript](https://www.typescriptlang.org/)
+* API Externa: [IsItDownStatus API](https://isitdownstatus.com/api/v1/status/)
 
-   ```bash
-   npx expo start
-   ```
+**Estructura Principal**
 
-In the output, you'll find options to open the app in a
+El código principal de la interfaz y la lógica de peticiones se encuentra en:
+`src/app/index.tsx`
 
-- [development build](https://docs.expo.dev/develop/development-builds/introduction/)
-- [Android emulator](https://docs.expo.dev/workflow/android-studio-emulator/)
-- [iOS simulator](https://docs.expo.dev/workflow/ios-simulator/)
-- [Expo Go](https://expo.dev/go), a limited sandbox for trying out app development with Expo
+**Requisitos Previos**
 
-You can start developing by editing the files inside the **app** directory. This project uses [file-based routing](https://docs.expo.dev/router/introduction).
+Antes de ejecutar el proyecto, asegúrate de tener instalado:
+* [Node.js](https://nodejs.org/)
+* Recomendado: La aplicación **Expo Go** instalada en tu dispositivo móvil (iOS / Android) o un emulador configurado (Android Studio / Xcode).
 
-## Get a fresh project
+**Instalación y Ejecución**
 
-When you're ready, run:
+1. Clonen el repositorio e ingresen a la carpeta:
 
-```bash
-npm run reset-project
+```
+git clone https://github.com/AndrishAraiza0412/centinela.git
+cd ServiceStatusApp
 ```
 
-This command will move the starter code to the **app-example** directory and create a blank **app** directory where you can start developing.
+2. Instalen las dependencias:
 
-### Other setup steps
+```
+npm install
+```
 
-- To set up ESLint for linting, run `npx expo lint`, or follow our guide on ["Using ESLint and Prettier"](https://docs.expo.dev/guides/using-eslint/)
-- If you'd like to set up unit testing, follow our guide on ["Unit Testing with Jest"](https://docs.expo.dev/develop/unit-testing/)
-- Learn more about the TypeScript setup in this template in our guide on ["Using TypeScript"](https://docs.expo.dev/guides/typescript/)
+3. Inicien la aplicación:
 
-## Learn more
+```
+npx expo start
+```
 
-To learn more about developing your project with Expo, look at the following resources:
+En la salida de la terminal, encontrarán las opciones para abrir la aplicación en:
 
-- [Expo documentation](https://docs.expo.dev/): Learn fundamentals, or go into advanced topics with our [guides](https://docs.expo.dev/guides).
-- [Learn Expo tutorial](https://docs.expo.dev/tutorial/introduction/): Follow a step-by-step tutorial where you'll create a project that runs on Android, iOS, and the web.
+* Un build de desarrollo.
+* Emulador de Android.
+* Simulador de iOS.
+* Expo Go (un entorno de pruebas limitado para experimentar con el desarrollo sin compilar nativamente).
 
-## Join the community
+**Equipo de Desarrollo**
 
-Join our community of developers creating universal apps.
-
-- [Expo on GitHub](https://github.com/expo/expo): View our open source platform and contribute.
-- [Discord community](https://chat.expo.dev): Chat with Expo users and ask questions.
+* Araiza Espinoza Andrish Nayd
+* Armenta Pacheco Sebastián 
+* Morales Salazar Daniel Armando
+* Murillo Monge Joshua David
+* Perea Panduro Juan Carlos
