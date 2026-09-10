@@ -1,98 +1,186 @@
-import * as Device from 'expo-device';
-import { Platform, StyleSheet } from 'react-native';
-import { SafeAreaView } from 'react-native-safe-area-context';
+import { useState } from 'react';
+import {
+  ActivityIndicator,
+  Keyboard,
+  SafeAreaView,
+  ScrollView,
+  StyleSheet,
+  Text,
+  TextInput,
+  TouchableOpacity,
+  View
+} from 'react-native';
 
-import { AnimatedIcon } from '@/components/animated-icon';
-import { HintRow } from '@/components/hint-row';
-import { ThemedText } from '@/components/themed-text';
-import { ThemedView } from '@/components/themed-view';
-import { WebBadge } from '@/components/web-badge';
-import { BottomTabInset, MaxContentWidth, Spacing } from '@/constants/theme';
+export default function App() {
+  const [serviceName, setServiceName] = useState('');
+  const [loading, setLoading] = useState(false);
+  const [error, setError] = useState<string | null>(null);
+  const [statusData, setStatusData] = useState<any | null>(null);
+  const checkStatus = async () => {
+    if (!serviceName.trim()) return;
+    
+    Keyboard.dismiss(); // Oculta el teclado al buscar
+    setLoading(true);
+    setError(null);
+    setStatusData(null);
 
-function getDevMenuHint() {
-  if (Platform.OS === 'web') {
-    return <ThemedText type="small">use browser devtools</ThemedText>;
-  }
-  if (Device.isDevice) {
-    return (
-      <ThemedText type="small">
-        shake device or press <ThemedText type="code">m</ThemedText> in terminal
-      </ThemedText>
-    );
-  }
-  const shortcut = Platform.OS === 'android' ? 'cmd+m (or ctrl+m)' : 'cmd+d';
+    try {
+      // Limpiamos el texto ingresado y lo pasamos a minúsculas
+      const query = serviceName.trim().toLowerCase();
+      const response = await fetch(`https://isitdownstatus.com/api/v1/status/${query}`);
+      
+      if (!response.ok) {
+        throw new Error('Servicio no encontrado o no monitoreado por esta API.');
+      }
+      
+      const data = await response.json();
+      setStatusData(data);
+    } catch (err) {
+      if (err instanceof Error) {
+        setError(err.message);
+      } else {
+        setError('Ocurrió un error desconocido');
+      }
+    } finally {
+      setLoading(false);
+    }
+  };
+
   return (
-    <ThemedText type="small">
-      press <ThemedText type="code">{shortcut}</ThemedText>
-    </ThemedText>
-  );
-}
+    <SafeAreaView style={styles.container}>
+      <View style={styles.header}>
+        <Text style={styles.title}>Monitor de Servicios</Text>
+        <Text style={styles.subtitle}>Consulta el status real de servicios de TI</Text>
+      </View>
 
-export default function HomeScreen() {
-  return (
-    <ThemedView style={styles.container}>
-      <SafeAreaView style={styles.safeArea}>
-        <ThemedView style={styles.heroSection}>
-          <AnimatedIcon />
-          <ThemedText type="title" style={styles.title}>
-            Welcome to&nbsp;Expo
-          </ThemedText>
-        </ThemedView>
+      <View style={styles.inputContainer}>
+        <TextInput
+          style={styles.input}
+          placeholder="Ej: github, stripe, aws..."
+          value={serviceName}
+          onChangeText={setServiceName}
+          autoCapitalize="none"
+          autoCorrect={false}
+          onSubmitEditing={checkStatus}
+        />
+        <TouchableOpacity style={styles.button} onPress={checkStatus}>
+          <Text style={styles.buttonText}>Verificar</Text>
+        </TouchableOpacity>
+      </View>
 
-        <ThemedText type="code" style={styles.code}>
-          get started
-        </ThemedText>
+      <ScrollView style={styles.resultContainer} contentContainerStyle={styles.scrollContent}>
+        {loading && <ActivityIndicator size="large" color="#0066cc" />}
+        
+        {error && (
+          <View style={styles.errorBox}>
+            <Text style={styles.errorText}>Error: {error}</Text>
+          </View>
+        )}
 
-        <ThemedView type="backgroundElement" style={styles.stepContainer}>
-          <HintRow
-            title="Try editing"
-            hint={<ThemedText type="code">src/app/index.tsx</ThemedText>}
-          />
-          <HintRow title="Dev tools" hint={getDevMenuHint()} />
-          <HintRow
-            title="Fresh start"
-            hint={<ThemedText type="code">npm run reset-project</ThemedText>}
-          />
-        </ThemedView>
-
-        {Platform.OS === 'web' && <WebBadge />}
-      </SafeAreaView>
-    </ThemedView>
+        {statusData && (
+          <View style={styles.card}>
+            <Text style={styles.cardTitle}>Resultado para: {serviceName}</Text>
+            {/* Como la estructura exacta de la API puede variar o incluir muchos campos, 
+                imprimimos el JSON formateado para una visualización completa */}
+            <Text style={styles.jsonText}>
+              {JSON.stringify(statusData, null, 2)}
+            </Text>
+          </View>
+        )}
+      </ScrollView>
+    </SafeAreaView>
   );
 }
 
 const styles = StyleSheet.create({
   container: {
     flex: 1,
-    justifyContent: 'center',
-    flexDirection: 'row',
+    backgroundColor: '#f5f7fa',
   },
-  safeArea: {
-    flex: 1,
-    paddingHorizontal: Spacing.four,
+  header: {
+    padding: 20,
+    paddingTop: 60,
+    backgroundColor: '#ffffff',
+    borderBottomWidth: 1,
+    borderBottomColor: '#e1e4e8',
     alignItems: 'center',
-    gap: Spacing.three,
-    paddingBottom: BottomTabInset + Spacing.three,
-    maxWidth: MaxContentWidth,
-  },
-  heroSection: {
-    alignItems: 'center',
-    justifyContent: 'center',
-    flex: 1,
-    paddingHorizontal: Spacing.four,
-    gap: Spacing.four,
   },
   title: {
-    textAlign: 'center',
+    fontSize: 24,
+    fontWeight: 'bold',
+    color: '#24292e',
   },
-  code: {
-    textTransform: 'uppercase',
+  subtitle: {
+    fontSize: 14,
+    color: '#586069',
+    marginTop: 5,
   },
-  stepContainer: {
-    gap: Spacing.three,
-    alignSelf: 'stretch',
-    paddingHorizontal: Spacing.three,
-    paddingVertical: Spacing.four,
-    borderRadius: Spacing.four,
+  inputContainer: {
+    flexDirection: 'row',
+    padding: 20,
+    gap: 10,
   },
+  input: {
+    flex: 1,
+    backgroundColor: '#ffffff',
+    borderWidth: 1,
+    borderColor: '#d1d5da',
+    borderRadius: 8,
+    paddingHorizontal: 15,
+    height: 50,
+    fontSize: 16,
+  },
+  button: {
+    backgroundColor: '#0066cc',
+    justifyContent: 'center',
+    alignItems: 'center',
+    borderRadius: 8,
+    paddingHorizontal: 20,
+    height: 50,
+  },
+  buttonText: {
+    color: '#ffffff',
+    fontWeight: 'bold',
+    fontSize: 16,
+  },
+  resultContainer: {
+    flex: 1,
+    paddingHorizontal: 20,
+  },
+  scrollContent: {
+    paddingBottom: 40,
+  },
+  card: {
+    backgroundColor: '#ffffff',
+    borderRadius: 8,
+    padding: 20,
+    shadowColor: '#000',
+    shadowOffset: { width: 0, height: 2 },
+    shadowOpacity: 0.1,
+    shadowRadius: 4,
+    elevation: 3,
+  },
+  cardTitle: {
+    fontSize: 18,
+    fontWeight: 'bold',
+    marginBottom: 15,
+    color: '#24292e',
+    textTransform: 'capitalize',
+  },
+  jsonText: {
+    fontFamily: 'monospace',
+    fontSize: 14,
+    color: '#333333',
+  },
+  errorBox: {
+    backgroundColor: '#ffeef0',
+    borderColor: '#ffdce0',
+    borderWidth: 1,
+    padding: 15,
+    borderRadius: 8,
+  },
+  errorText: {
+    color: '#cb2431',
+    fontWeight: '500',
+  }
 });
