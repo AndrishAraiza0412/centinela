@@ -1,6 +1,7 @@
 import { useState } from 'react';
 import {
   ActivityIndicator,
+  Image,
   Keyboard,
   SafeAreaView,
   ScrollView,
@@ -11,30 +12,88 @@ import {
   View
 } from 'react-native';
 
+type ServiceStatus = {
+  slug: string;
+  name: string;
+  category: string;
+  logo_url: string;
+  status: string;
+  report_count_1h: number;
+  report_count_24h: number;
+  updated_at: string;
+};
+
 export default function App() {
   const [serviceName, setServiceName] = useState('');
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState<string | null>(null);
-  const [statusData, setStatusData] = useState<any | null>(null);
+  const [statusData, setStatusData] = useState<ServiceStatus | null>(null);
+
+  const getStatusColor = (status: string) => {
+    const s = status.toLowerCase();
+    if (s.includes('operational') || s.includes('up')) return '#28a745'; 
+    if (s.includes('degraded') || s.includes('partial')) return '#f0ad4e'; 
+    if (s.includes('down') || s.includes('major') || s.includes('outage')) return '#cb2431'; 
+    return '#8a8f98'; 
+  };
+
+  const formatDate = (isoString: string) => {
+    try {
+      return new Date(isoString).toLocaleString();
+    } catch {
+      return isoString;
+    }
+  };
+
   const checkStatus = async () => {
     if (!serviceName.trim()) return;
-    
-    Keyboard.dismiss(); // Oculta el teclado al buscar
+
+    Keyboard.dismiss(); 
     setLoading(true);
     setError(null);
     setStatusData(null);
 
+    //Prueba de datos debido a la alta demanda de peticiones en la API pública (STATUS 429)
+    const USE_MOCK = false; // Cambia a true para usar datos de prueba sin hacer fetch
+    if (USE_MOCK) {
+      setTimeout(() => {
+        setStatusData({
+          slug: 'github',
+          name: 'GitHub',
+          category: 'cloud',
+          logo_url: 'https://t3.gstatic.com/faviconV2?client=SOCIAL&type=FAVICON&fallback_opts=TYPE,SIZE,URL&url=https://github.com&size=128',
+          status: 'operational',
+          report_count_1h: 0,
+          report_count_24h: 0,
+          updated_at: new Date().toISOString(),
+        });
+        setLoading(false);
+      }, 800);
+      return;
+    }
+
     try {
-      // Limpiamos el texto ingresado y lo pasamos a minúsculas
+      
       const query = serviceName.trim().toLowerCase();
       const response = await fetch(`https://isitdownstatus.com/api/v1/status/${query}`);
-      
+
+      console.log('STATUS:', response.status);
+
+      if (response.status === 429) {
+        throw new Error('Demasiadas solicitudes. Espera un momento antes de volver a intentar.');
+      }
+
       if (!response.ok) {
         throw new Error('Servicio no encontrado o no monitoreado por esta API.');
       }
-      
-      const data = await response.json();
-      setStatusData(data);
+
+      const json = await response.json();
+
+      if (!json.ok || !json.data) {
+        throw new Error('No se encontró información para ese servicio.');
+      }
+
+      setStatusData(json.data);
     } catch (err) {
       if (err instanceof Error) {
         setError(err.message);
@@ -70,7 +129,7 @@ export default function App() {
 
       <ScrollView style={styles.resultContainer} contentContainerStyle={styles.scrollContent}>
         {loading && <ActivityIndicator size="large" color="#0066cc" />}
-        
+
         {error && (
           <View style={styles.errorBox}>
             <Text style={styles.errorText}>Error: {error}</Text>
@@ -79,12 +138,42 @@ export default function App() {
 
         {statusData && (
           <View style={styles.card}>
-            <Text style={styles.cardTitle}>Resultado para: {serviceName}</Text>
-            {/* Como la estructura exacta de la API puede variar o incluir muchos campos, 
-                imprimimos el JSON formateado para una visualización completa */}
-            <Text style={styles.jsonText}>
-              {JSON.stringify(statusData, null, 2)}
-            </Text>
+            {/* Encabezado: logo + nombre + categoría */}
+            <View style={styles.cardHeader}>
+              {statusData.logo_url ? (
+                <Image source={{ uri: statusData.logo_url }} style={styles.logo} />
+              ) : null}
+              <View style={styles.cardHeaderText}>
+                <Text style={styles.cardTitle}>{statusData.name}</Text>
+                <Text style={styles.cardCategory}>{statusData.category}</Text>
+              </View>
+            </View>
+
+            {/* Semáforo: punto de color + texto del status */}
+            <View style={styles.statusRow}>
+              <View
+                style={[
+                  styles.statusDot,
+                  { backgroundColor: getStatusColor(statusData.status) }
+                ]}
+              />
+              <Text style={styles.statusText}>{statusData.status}</Text>
+            </View>
+
+            {/* Datos extra */}
+            <View style={styles.divider} />
+            <View style={styles.detailRow}>
+              <Text style={styles.detailLabel}>Reportes (última hora)</Text>
+              <Text style={styles.detailValue}>{statusData.report_count_1h}</Text>
+            </View>
+            <View style={styles.detailRow}>
+              <Text style={styles.detailLabel}>Reportes (24h)</Text>
+              <Text style={styles.detailValue}>{statusData.report_count_24h}</Text>
+            </View>
+            <View style={styles.detailRow}>
+              <Text style={styles.detailLabel}>Actualizado</Text>
+              <Text style={styles.detailValue}>{formatDate(statusData.updated_at)}</Text>
+            </View>
           </View>
         )}
       </ScrollView>
@@ -160,17 +249,66 @@ const styles = StyleSheet.create({
     shadowRadius: 4,
     elevation: 3,
   },
+  cardHeader: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    marginBottom: 15,
+  },
+  logo: {
+    width: 40,
+    height: 40,
+    borderRadius: 8,
+    marginRight: 12,
+  },
+  cardHeaderText: {
+    flex: 1,
+  },
   cardTitle: {
     fontSize: 18,
     fontWeight: 'bold',
-    marginBottom: 15,
     color: '#24292e',
     textTransform: 'capitalize',
   },
-  jsonText: {
-    fontFamily: 'monospace',
+  cardCategory: {
+    fontSize: 13,
+    color: '#8a8f98',
+    textTransform: 'capitalize',
+  },
+  statusRow: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    marginBottom: 10,
+  },
+  statusDot: {
+    width: 12,
+    height: 12,
+    borderRadius: 6,
+    marginRight: 8,
+  },
+  statusText: {
+    fontSize: 16,
+    fontWeight: '600',
+    textTransform: 'capitalize',
+    color: '#24292e',
+  },
+  divider: {
+    height: 1,
+    backgroundColor: '#e1e4e8',
+    marginVertical: 10,
+  },
+  detailRow: {
+    flexDirection: 'row',
+    justifyContent: 'space-between',
+    marginBottom: 6,
+  },
+  detailLabel: {
     fontSize: 14,
-    color: '#333333',
+    color: '#586069',
+  },
+  detailValue: {
+    fontSize: 14,
+    color: '#24292e',
+    fontWeight: '500',
   },
   errorBox: {
     backgroundColor: '#ffeef0',
