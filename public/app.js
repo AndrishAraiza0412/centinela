@@ -129,26 +129,33 @@ function renderCounters() {
   );
 }
 
+// Sección «Proyectos» de la barra lateral: una vista por cada carpeta con agentes en esta ejecución.
 function renderTabs() {
   const projects = new Map();
   for (const n of Object.values(state.nodes)) {
     if (!n.cwd) continue;
-    const p = projects.get(n.cwd) ?? { working: 0, waiting: 0 };
+    const p = projects.get(n.cwd) ?? { active: 0, working: 0, waiting: 0 };
+    if (ACTIVE.has(n.status)) p.active++;
     if (n.status === 'working') p.working++;
     if (n.status === 'waiting') p.waiting++;
     projects.set(n.cwd, p);
   }
   if (project && !projects.has(project)) project = '';
   const tab = (value, label, info) => el('button', {
-    type: 'button', role: 'tab', class: 'tab', title: value || 'Todos los proyectos',
-    'aria-selected': String(project === value),
+    type: 'button', class: 'nav-item', title: value || 'Todos los proyectos', 'aria-label': label,
+    'aria-current': project === value ? 'page' : undefined,
     onclick: () => {
       project = value;
       save('centinela-project', value);
-      scheduleRender();
+      setView('canvas');
     },
-  }, info ? el('span', { class: `tab-dot ${info.waiting ? 'waiting' : info.working ? 'working' : ''}`, 'aria-hidden': 'true' }) : null, label);
-  $('#tabs').replaceChildren(tab('', 'Todos'), ...[...projects].map(([cwd, info]) => tab(cwd, basename(cwd), info)));
+  }, icon('folder'), el('span', { class: 'nav-label', text: label }),
+  info ? el('span', { class: `nav-count ${info.waiting ? 'waiting' : info.working ? 'working' : ''}`, title: 'Agentes activos', text: String(info.active) }) : null);
+  $('#tabs').replaceChildren(
+    el('p', { class: 'caps', text: 'Proyectos' }),
+    ...(projects.size
+      ? [tab('', 'Todos'), ...[...projects].map(([cwd, info]) => tab(cwd, basename(cwd), info))]
+      : [el('p', { class: 'nav-empty', text: 'Aparecen al lanzar un agente.' })]));
 }
 
 // ---------- lienzo ----------

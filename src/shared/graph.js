@@ -225,6 +225,7 @@ function reduceLaunch(state, agentKey, b, ts) {
     const node = ensureMain(state, b.sessionId, b.cwd, ts);
     node.launched = agentKey;
     if (b.role) node.role = b.role;
+    if (typeof b.model === 'string') node.model = b.model;
     return;
   }
   if (b.event === 'exited') {
@@ -252,19 +253,5 @@ export function reduce(state, rec) {
   else if (rec.kind === 'permission') reducePermission(state, rec.agentKey, b, rec.ts);
   else if (rec.kind === 'launch') reduceLaunch(state, rec.agentKey, b, rec.ts);
   else if (rec.kind === 'stream') reduceStream(state, rec.agentKey, b, rec.ts);
-  return state;
-}
-
-// Tras recargar el historial: nada de lo que estaba vivo antes del reinicio puede seguir vivo.
-export function markDisconnected(state) {
-  state.pending = {}; // la cola de permisos del servidor arranca vacía: ninguna tarjeta es decidible
-  for (const node of Object.values(state.nodes)) {
-    if (!ACTIVE.has(node.status)) continue;
-    if (node.launched) node.status = 'disconnected';
-    else if (node.status !== 'idle') {
-      node.status = 'idle';
-      node.current = null;
-    }
-  }
   return state;
 }

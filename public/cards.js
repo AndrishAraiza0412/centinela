@@ -5,7 +5,7 @@ import { icon } from '/icons.js';
 
 export const STATUS_LABEL = {
   idle: 'Inactivo', working: 'Trabajando', waiting: 'Espera permiso',
-  done: 'Terminado', error: 'Error', disconnected: 'Desconectado',
+  done: 'Terminado', error: 'Error',
 };
 const LINES = 5;
 const basename = (p) => (p ? p.split('/').filter(Boolean).pop() : '') || p || '';
@@ -84,6 +84,7 @@ export function createCard(n, { onSelect }) {
     refill('perms', permissions.map((c) => c.dataset.permId).join('|'), () => permissions);
 
     const bits = [`${n.actions.length} ${n.actions.length === 1 ? 'acción' : 'acciones'}`];
+    if (n.model) bits.unshift(n.model.replace(/^claude-/, ''));
     if (n.usage?.contextTokens) bits.push(`contexto ${tokens(n.usage.contextTokens)}`);
     if (typeof n.usage?.costUsd === 'number') bits.push(`≈ $${n.usage.costUsd.toFixed(2)} (estimado)`);
     const end = n.exit

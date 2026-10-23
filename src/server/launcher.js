@@ -4,7 +4,7 @@ import { randomUUID, randomBytes } from 'node:crypto';
 import { createInterface } from 'node:readline';
 import { realpathSync, statSync, existsSync } from 'node:fs';
 import { isAbsolute, join } from 'node:path';
-import { listRoles } from './roles.js';
+import { listRoles, builtinAgent } from './roles.js';
 import { safeEqual } from './auth.js';
 
 const STDERR_TAIL = 2000;
@@ -14,6 +14,8 @@ const SESSION_ID = /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12
 const PROJECT_CONFIG = ['.claude/settings.json', '.claude/settings.local.json', '.mcp.json'];
 // Modos en que cada permiso pasa por PermissionRequest (y por lo tanto por el panel).
 const GATED_MODES = new Set(['default', 'manual']);
+// Alias que `claude --model` resuelve a la última versión; '' = el modelo por defecto.
+export const MODELS = ['', 'opus', 'sonnet', 'haiku'];
 
 export class LaunchError extends Error {
   constructor(message, status = 400, code) {
@@ -55,7 +57,7 @@ export function createLauncher({ claudeBin, port, broadcast }) {
     sandbox: { autoAllowBashIfSandboxed: false, network: { allowedDomains: [`127.0.0.1:${port()}`] } },
   });
 
-  function launch({ role, cwd, prompt, resume, trustProject } = {}) {
+  function launch({ role, cwd, prompt, resume, trustProject, model = '' } = {}) {
     const dir = validateCwd(cwd);
     const found = listRoles(dir).find((r) => r.name === role);
     if (!found) throw new LaunchError(`El rol «${String(role)}» no existe en este proyecto ni en tus agentes.`);
@@ -70,6 +72,7 @@ export function createLauncher({ claudeBin, port, broadcast }) {
     if (resume !== undefined && (typeof resume !== 'string' || !SESSION_ID.test(resume))) {
       throw new LaunchError('La sesión a continuar no es un id de sesión válido.');
     }
+    if (!MODELS.includes(model)) throw new LaunchError(`El modelo «${String(model)}» no está en la lista.`);
 
     const agentKey = randomUUID();
     const launchToken = randomBytes(32).toString('hex');
@@ -77,6 +80,8 @@ export function createLauncher({ claudeBin, port, broadcast }) {
       '-p', '--agent', role, '--input-format', 'stream-json', '--output-format', 'stream-json', '--verbose',
       '--permission-mode', 'default', '--settings', JSON.stringify(permSettings(launchToken)),
       ...(resume ? ['--resume', resume] : []),
+      ...(model ? ['--model', model] : []),
+      ...(found.source === 'centinela' ? ['--agents', JSON.stringify(builtinAgent(role))] : []),
     ];
     const child = spawn(claudeBin, args, { cwd: dir, env: { ...process.env, CENTINELA_AGENT_KEY: agentKey } });
     const agent = { child, launchToken, alive: true, stopped: false, killTimer: null };
@@ -104,7 +109,7 @@ export function createLauncher({ claudeBin, port, broadcast }) {
         return;
       }
       if (body.type === 'system' && body.subtype === 'init') {
-        broadcast({ ts: Date.now(), kind: 'launch', agentKey, body: { event: 'started', sessionId: body.session_id, cwd: dir, role } });
+        broadcast({ ts: Date.now(), kind: 'launch', agentKey, body: { event: 'started', sessionId: body.session_id, cwd: dir, role, model: body.model } });
         // El prompt inicial se anuncia aquí: antes de init el nodo aún no existe en el grafo.
         broadcast({ ts: Date.now(), kind: 'launch', agentKey, body: { event: 'prompt', text: prompt } });
       }

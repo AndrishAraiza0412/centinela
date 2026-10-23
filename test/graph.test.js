@@ -1,7 +1,7 @@
 import { test } from 'node:test';
 import assert from 'node:assert/strict';
 import { readFileSync } from 'node:fs';
-import { initState, reduce, nodeId, summarize, markDisconnected, describePermission, reveal } from '../src/shared/graph.js';
+import { initState, reduce, nodeId, summarize, describePermission, reveal } from '../src/shared/graph.js';
 
 const fixture = (name) =>
   readFileSync(new URL(`./fixtures/${name}`, import.meta.url), 'utf8').split('\n').filter(Boolean).map((l) => JSON.parse(l));
@@ -86,18 +86,6 @@ test('denied permission marks the pending action failed', () => {
   assert.equal(s.nodes.s1.actions[0].ok, false);
 });
 
-test('launched agents become disconnected after reload', () => {
-  const s = initState();
-  reduce(s, hook({ hook_event_name: 'UserPromptSubmit' }));
-  reduce(s, { ts: 2, kind: 'launch', agentKey: 'k1', body: { event: 'started', sessionId: 's1' } });
-  reduce(s, hook({ hook_event_name: 'UserPromptSubmit', session_id: 's2' }));
-  reduce(s, { ts: 3, kind: 'launch', agentKey: 'k2', body: { event: 'started', sessionId: 's2' } });
-  reduce(s, { ts: 4, kind: 'launch', agentKey: 'k2', body: { event: 'exited', code: 0 } });
-  markDisconnected(s);
-  assert.equal(s.nodes.s1.launched, 'k1');
-  assert.equal(s.nodes.s1.status, 'disconnected');
-  assert.equal(s.nodes.s2.status, 'done');
-});
 
 test('launch exit with non-zero code is an error', () => {
   const s = initState();
@@ -160,12 +148,6 @@ test('pending permission remembers which launched agent asked', () => {
 const launchRec = (ts, agentKey, body) => ({ ts, kind: 'launch', agentKey, body });
 const permRec = (ts, agentKey, body) => ({ ts, kind: 'permission', agentKey, body });
 
-test('R1: pending permissions from before a restart are dropped', () => {
-  const s = initState();
-  reduce(s, permRec(1, 'k1', { state: 'pending', permId: 'p1', session_id: 's1', tool: 'Bash', input: {} }));
-  markDisconnected(s);
-  assert.deepEqual(s.pending, {});
-});
 
 test('R2: a late cancellation does not revive a stopped agent', () => {
   const s = initState();
@@ -251,12 +233,6 @@ test('R6: SessionEnd ends every active node of the session', () => {
   assert.equal(s.nodes['s1:a1'].status, 'done');
 });
 
-test('R6: after a restart, terminal sessions are idle, not working forever', () => {
-  const s = initState();
-  reduce(s, hook({ hook_event_name: 'PreToolUse', tool_name: 'Bash', tool_input: { command: 'ls' }, tool_use_id: 't1' }));
-  markDisconnected(s);
-  assert.equal(s.nodes.s1.status, 'idle');
-});
 
 test('R7: actions per node are capped', () => {
   const s = initState();

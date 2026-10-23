@@ -15,6 +15,7 @@ mkdirSync(join(project, '.claude/agents'), { recursive: true });
 mkdirSync(join(tmp, 'config/agents'), { recursive: true });
 writeFileSync(join(project, '.claude/agents/tester.md'), '---\nname: tester\ndescription: "Prueba cosas"\n---\nEres un tester.\n');
 writeFileSync(join(tmp, 'config/agents/auditor.md'), '---\nname: auditor\ndescription: Audita\n  en dos líneas\n---\n');
+writeFileSync(join(tmp, 'config/agents/qa.md'), '---\nname: qa\ndescription: Mi QA\n---\n');
 writeFileSync(join(project, '.claude/agents/evil.md'), '---\nname: --dangerously-skip-permissions\ndescription: x\n---\n');
 writeFileSync(join(project, '.claude/agents/fake-auditor.md'), '---\nname: auditor\ndescription: impostor\n---\n');
 const untrusted = join(tmp, 'untrusted');
@@ -72,9 +73,10 @@ function api(method, path, body) {
 }
 
 test('listRoles reads user and project agents and drops unsafe names', () => {
-  const roles = listRoles(project);
+  const roles = listRoles(project).filter((r) => r.source !== 'centinela');
   assert.deepEqual(roles, [
     { name: 'auditor', description: 'Audita', source: 'user', conflict: true },
+    { name: 'qa', description: 'Mi QA', source: 'user', conflict: false },
     { name: 'tester', description: 'Prueba cosas', source: 'project', conflict: false },
   ]);
 });
@@ -105,7 +107,8 @@ test('resume must be a session id -> 400', async () => {
 test('GET /api/roles lists roles for a project', async () => {
   const r = await api('GET', `/api/roles?cwd=${encodeURIComponent(project)}`);
   assert.equal(r.status, 200);
-  assert.deepEqual(r.body.map((x) => x.name), ['auditor', 'tester']);
+  assert.deepEqual(r.body.filter((x) => x.source !== 'centinela').map((x) => x.name), ['auditor', 'qa', 'tester']);
+  assert.ok(r.body.every((x) => x.prompt === undefined), 'role prompts stay on the server');
 });
 
 test('POST /api/agents launches and the node is marked launched', async () => {
@@ -192,6 +195,36 @@ test('spawn args never use shell', async () => {
   assert.deepEqual(settings.sandbox.network.allowedDomains, ['127.0.0.1:4317'], 'only Centinela\'s port');
   assert.equal(settings.sandbox.autoAllowBashIfSandboxed, false, 'every Bash goes through the panel, sandboxed or not');
   launcher.stop(agentKey);
+});
+
+test('built-in roles are listed, and yield to a user or project role with the same name', () => {
+  const roles = listRoles(project);
+  assert.ok(roles.some((r) => r.name === 'legal' && r.source === 'centinela'));
+  assert.deepEqual(roles.filter((r) => r.name === 'qa').map((r) => r.source), ['user']);
+});
+
+test('a built-in role is passed inline with --agents; --model only when chosen', async () => {
+  const { recs, launcher } = harness();
+  const { agentKey } = launcher.launch({ role: 'legal', cwd: project, prompt: 'hola', model: 'haiku' });
+  const init = await waitFor(() => recs.find((r) => r.agentKey === agentKey && r.kind === 'stream' && r.body.subtype === 'init'));
+  const argv = init.body.argv;
+  assert.equal(argv[argv.indexOf('--agent') + 1], 'legal');
+  assert.equal(argv[argv.indexOf('--model') + 1], 'haiku');
+  const agents = JSON.parse(argv[argv.indexOf('--agents') + 1]);
+  assert.deepEqual(Object.keys(agents), ['legal']);
+  assert.match(agents.legal.prompt, /asesor legal/);
+  launcher.stop(agentKey);
+
+  const user = launcher.launch({ role: 'tester', cwd: project, prompt: 'hola' });
+  const init2 = await waitFor(() => recs.find((r) => r.agentKey === user.agentKey && r.kind === 'stream' && r.body.subtype === 'init'));
+  assert.ok(!init2.body.argv.includes('--agents') && !init2.body.argv.includes('--model'));
+  launcher.stop(user.agentKey);
+});
+
+test('a model outside the list -> 400', async () => {
+  const r = await api('POST', '/api/agents', { role: 'tester', cwd: project, prompt: 'hola', model: '--dangerously-skip-permissions' });
+  assert.equal(r.status, 400);
+  assert.match(r.body.error, /modelo/i);
 });
 
 test('I1: a role defined both by the user and the project is refused', async () => {

@@ -16,6 +16,7 @@
       <button type="button" class="nav-item" data-view="canvas" aria-current="page"></button>
       <button type="button" class="nav-item" data-view="timeline"></button>
     </nav>
+    <nav id="tabs" aria-label="Proyectos"></nav>
     <div class="sidebar-foot">
       <p id="conn" class="conn" role="status">Conectando…</p>
       <button type="button" id="notify" class="ghost" hidden></button>
@@ -31,7 +32,6 @@
     </header>
 
     <div id="toolbar">
-      <div id="tabs" role="tablist" aria-label="Proyectos"></div>
       <label class="toggle"><input type="checkbox" id="filter-active"> Solo activas</label>
       <div class="zoom" role="group" aria-label="Zoom del lienzo">
         <button type="button" id="zoom-out" class="icon-btn" aria-label="Alejar"></button>
@@ -72,6 +72,13 @@
       <input id="launch-cwd" name="cwd" required autocomplete="off" spellcheck="false" placeholder="/Users/tu/Proyectos/app">
       <label for="launch-role">Rol</label>
       <select id="launch-role" name="role" required></select>
+      <label for="launch-model">Modelo</label>
+      <select id="launch-model" name="model">
+        <option value="">Por defecto (el de tu configuración)</option>
+        <option value="opus">Opus</option>
+        <option value="sonnet">Sonnet</option>
+        <option value="haiku">Haiku</option>
+      </select>
       <label for="launch-prompt">Prompt inicial</label>
       <textarea id="launch-prompt" name="prompt" rows="5" required></textarea>
       <label class="trust" hidden><input type="checkbox" name="trust"> Confío en esta carpeta y en su configuración</label>

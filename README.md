@@ -28,14 +28,19 @@ node bin/centinela-hooks.js uninstall   # quita solo lo que añadió Centinela
 
 ## El panel
 
+- **Arranca vacío:** el lienzo solo muestra lo que ocurre desde que abriste Centinela (el historial sigue guardado en `~/.centinela/`).
+- **Proyectos:** en la barra lateral, una vista por cada carpeta con agentes, con el número de agentes activos; «Todos» los muestra juntos.
 - **Lienzo de agentes:** cada sesión y subagente es una tarjeta (estado, qué hace ahora, últimas acciones, última respuesta y, si te espera, su permiso ahí mismo). Las líneas punteadas muestran la tarea delegada. Arrastra el fondo o desliza con dos dedos para moverte; pellizca o ⌘+rueda para el zoom; «Encuadrar» vuelve a mostrar todo.
 - **Te esperan:** el contador de arriba lleva al agente que espera un permiso. Un agente que espera se ve siempre, aunque los filtros lo oculten.
 - **Barra de comandos:** «Mensaje a todos» o a un agente lanzado (⌘↩), «Nuevo agente» y «Detener todos» (pide confirmar).
-- **Línea de tiempo:** un carril por agente, en la barra lateral.
+- **Línea de tiempo:** un carril por agente.
 
 ## Agentes lanzados desde el panel
 
-"+ Nuevo agente" lanza `claude -p --agent <rol>` en la carpeta que elijas. Los roles salen de tu carpeta de agentes de Claude Code (`agents/*.md`) y de `.claude/agents/*.md` del proyecto.
+"+ Nuevo agente" lanza `claude -p --agent <rol>` en la carpeta que elijas, con el modelo que elijas (por defecto, Opus, Sonnet o Haiku). Los roles salen de:
+
+- `roles/*.md` de Centinela (incluidos): desarrollador, arquitecto, legal, diseñador, qa, seguridad, devops, documentador, producto y datos. Se pasan con `--agents` al lanzar; no tocan tu configuración. Si tú o el proyecto tienen un rol con el mismo nombre, se usa ese.
+- Tu carpeta de agentes de Claude Code (`agents/*.md`) y `.claude/agents/*.md` del proyecto.
 
 - Corren en modo de permisos `default` (si `claude` informa otro modo al arrancar, Centinela lo detiene): cada permiso aparece como tarjeta con la entrada completa, y los caracteres invisibles o el relleno de espacios se muestran marcados. Permitir / Permitir esta misma acción durante la sesión (misma herramienta, mismo agente y exactamente la misma entrada) / Rechazar.
 - Todo Bash pasa por el panel, también el que correría dentro del sandbox (en tus sesiones de terminal, Claude Code lo aprueba solo; en los agentes lanzados se desactiva con `autoAllowBashIfSandboxed: false`).
@@ -51,7 +56,7 @@ Todo vive en `~/.centinela/` (`0700`; archivos `0600`):
 | Archivo | Para qué |
 |---|---|
 | `hook-token` | Solo permite enviar eventos a `/hooks/event` (se validan). Va escrito en tu `settings.json`. |
-| `events-YYYY-MM-DD.jsonl` | Historial de eventos. Puede contener lo que tus agentes leyeron o escribieron. Al arrancar se cargan hoy y ayer. |
+| `events-YYYY-MM-DD.jsonl` | Historial de eventos. Puede contener lo que tus agentes leyeron o escribieron. No se vuelve a cargar al arrancar. |
 
 El token de la página no se guarda en disco: se genera en cada arranque y solo se entrega por el código de un solo uso. Cada agente lanzado recibe además un token propio, en memoria, que solo sirve para pedir permisos y muere con él.
 

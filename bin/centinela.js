@@ -4,9 +4,7 @@ import { randomBytes } from 'node:crypto';
 import { rmSync } from 'node:fs';
 import { join } from 'node:path';
 import { home, ensureHome, readOrCreateToken } from '../src/server/paths.js';
-import { loadAll } from '../src/server/store.js';
 import { createServer } from '../src/server/server.js';
-import { reduce, markDisconnected } from '../src/shared/graph.js';
 
 const port = Number(process.env.CENTINELA_PORT || 4317);
 
@@ -15,7 +13,7 @@ ensureHome();
 // sandbox de Claude Code podía leerlo y manejar el panel. Versiones anteriores lo guardaban.
 rmSync(join(home(), 'token'), { force: true });
 const pairCode = randomBytes(16).toString('hex');
-const { server, state } = createServer({
+const { server } = createServer({
   port,
   uiToken: randomBytes(32).toString('hex'),
   pairCode,
@@ -23,14 +21,7 @@ const { server, state } = createServer({
   claudeBin: process.env.CENTINELA_CLAUDE_BIN || 'claude',
 });
 
-for (const rec of loadAll()) {
-  try {
-    reduce(state, rec);
-  } catch (err) {
-    console.warn(`Centinela: evento del historial ignorado (${err.message})`);
-  }
-}
-markDisconnected(state);
+// El lienzo arranca vacío: el historial queda en ~/.centinela/ pero no se vuelve a cargar.
 
 server.on('error', (err) => {
   if (err.code !== 'EADDRINUSE') throw err;

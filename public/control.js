@@ -36,7 +36,7 @@ async function fillRoles(select, cwd, err) {
   }
   err.textContent = r.data.length ? '' : 'No hay roles: crea uno en tu carpeta de agentes de Claude Code o en .claude/agents del proyecto.';
   if (!r.data.some((x) => !x.conflict)) return none('Sin roles disponibles');
-  const source = { user: 'tuyo', project: 'del proyecto' };
+  const source = { centinela: 'incluido', user: 'tuyo', project: 'del proyecto' };
   select.append(...r.data.map((x) => el('option', {
     value: x.name,
     disabled: x.conflict,
@@ -50,7 +50,8 @@ async function fillRoles(select, cwd, err) {
 function setupDialog(getSelected) {
   const dialog = document.querySelector('#launch-dialog');
   const form = dialog.querySelector('form');
-  const { cwd, role, prompt, trust } = form.elements;
+  const { cwd, role, model, prompt, trust } = form.elements;
+  model.value = load('centinela-model') ?? '';
   const err = dialog.querySelector('.error');
   const trustRow = dialog.querySelector('.trust');
   const submit = form.querySelector('button[value="launch"]');
@@ -72,13 +73,14 @@ function setupDialog(getSelected) {
     if (e.submitter?.value === 'cancel') return; // method=dialog: cierra
     e.preventDefault();
     submit.disabled = true;
-    const r = await api('POST', '/api/agents', { role: role.value, cwd: cwd.value.trim(), prompt: prompt.value, trustProject: trust.checked });
+    const r = await api('POST', '/api/agents', { role: role.value, model: model.value, cwd: cwd.value.trim(), prompt: prompt.value, trustProject: trust.checked });
     submit.disabled = false;
     if (!r.ok) {
       if (r.data?.code === 'untrusted') trustRow.hidden = false;
       return void (err.textContent = errorText(r));
     }
     save('centinela-cwd', cwd.value.trim());
+    save('centinela-model', model.value);
     prompt.value = '';
     dialog.close();
     onLaunched(r.data.agentKey);
@@ -119,7 +121,7 @@ function launchedControls(n, err) {
       const live = LIVE.has(n.status);
       form.hidden = !live;
       note.hidden = live;
-      note.textContent = n.status === 'disconnected' ? 'Centinela se reinició; este agente ya no está conectado.' : 'El agente terminó.';
+      note.textContent = 'El agente terminó.';
     },
   };
 }
