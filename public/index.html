@@ -1,0 +1,86 @@
+<!doctype html>
+<html lang="es">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <meta http-equiv="Content-Security-Policy" content="default-src 'self'; script-src 'self'; connect-src 'self'; base-uri 'none'; form-action 'none'">
+  <meta name="color-scheme" content="dark">
+  <title>Centinela</title>
+  <link rel="stylesheet" href="/style.css">
+  <script type="module" src="/app.js"></script>
+</head>
+<body>
+  <aside id="sidebar">
+    <p class="brand"><span class="brand-dot" aria-hidden="true"></span>Centinela <span class="sep">//</span> panel</p>
+    <nav aria-label="Vistas">
+      <button type="button" class="nav-item" data-view="canvas" aria-current="page"></button>
+      <button type="button" class="nav-item" data-view="timeline"></button>
+    </nav>
+    <div class="sidebar-foot">
+      <p id="conn" class="conn" role="status">Conectando…</p>
+      <button type="button" id="notify" class="ghost" hidden></button>
+      <p class="version">v1.0.0</p>
+    </div>
+  </aside>
+
+  <div id="main">
+    <header id="topbar">
+      <h1 class="title"><span id="logo"></span>Centinela</h1>
+      <span class="chip">Local · 127.0.0.1</span>
+      <dl id="counters" aria-label="Estado de los agentes"></dl>
+    </header>
+
+    <div id="toolbar">
+      <div id="tabs" role="tablist" aria-label="Proyectos"></div>
+      <label class="toggle"><input type="checkbox" id="filter-active"> Solo activas</label>
+      <div class="zoom" role="group" aria-label="Zoom del lienzo">
+        <button type="button" id="zoom-out" class="icon-btn" aria-label="Alejar"></button>
+        <output id="zoom-level">100%</output>
+        <button type="button" id="zoom-in" class="icon-btn" aria-label="Acercar"></button>
+        <button type="button" id="zoom-fit" class="ghost">Encuadrar</button>
+      </div>
+      <button type="button" id="new-agent" class="primary"></button>
+    </div>
+
+    <div id="stage">
+      <section id="canvas" aria-label="Lienzo de agentes"></section>
+      <section id="timeline" aria-label="Línea de tiempo" hidden></section>
+      <p id="empty" class="empty-stage" hidden></p>
+
+      <form id="commandbar" aria-label="Barra de comandos">
+        <div class="say-row">
+          <select id="say-target" aria-label="Destinatario"></select>
+          <textarea id="say-text" rows="1" placeholder="Habla con un agente o con todos…" aria-label="Mensaje"></textarea>
+          <kbd>⌘↩</kbd>
+          <button type="submit" id="say-send" class="icon-btn primary" aria-label="Enviar"></button>
+          <button type="button" id="op-stop-all" class="ghost danger-text"></button>
+        </div>
+        <p class="say-status" role="status"></p>
+      </form>
+
+      <aside id="drawer" aria-label="Detalle del agente" hidden>
+        <button type="button" id="drawer-close" class="icon-btn drawer-close" aria-label="Cerrar detalle"></button>
+        <div id="panel"></div>
+      </aside>
+    </div>
+  </div>
+
+  <dialog id="launch-dialog" aria-labelledby="launch-title">
+    <form method="dialog">
+      <h2 id="launch-title">Nuevo agente</h2>
+      <label for="launch-cwd">Carpeta del proyecto <small>(ruta absoluta)</small></label>
+      <input id="launch-cwd" name="cwd" required autocomplete="off" spellcheck="false" placeholder="/Users/tu/Proyectos/app">
+      <label for="launch-role">Rol</label>
+      <select id="launch-role" name="role" required></select>
+      <label for="launch-prompt">Prompt inicial</label>
+      <textarea id="launch-prompt" name="prompt" rows="5" required></textarea>
+      <label class="trust" hidden><input type="checkbox" name="trust"> Confío en esta carpeta y en su configuración</label>
+      <p class="error" role="alert"></p>
+      <div class="row">
+        <button type="submit" value="cancel" formnovalidate>Cancelar</button>
+        <button type="submit" value="launch" class="primary">Lanzar</button>
+      </div>
+    </form>
+  </dialog>
+</body>
+</html>
