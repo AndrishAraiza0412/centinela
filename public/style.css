@@ -310,6 +310,7 @@ input[type="checkbox"] { width: auto; }
 .card-title {
   all: unset;
   display: block;
+  max-width: 100%;
   cursor: pointer;
   font-family: var(--serif);
   font-variant-caps: all-small-caps;
