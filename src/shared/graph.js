@@ -4,7 +4,7 @@ const DELEGATION_TOOL = 'Agent';
 const MAX_SUMMARY = 80;
 const MAX_MESSAGES = 200;
 const MAX_ACTIONS = 500;
-const ACTIVE = new Set(['idle', 'working', 'waiting']);
+export const ACTIVE = new Set(['idle', 'working', 'waiting']);
 const RESERVED = new Set(['__proto__', 'constructor', 'prototype']);
 // Un id que viene de un evento nunca puede ser un nombre heredado de Object.prototype.
 const safeId = (id) => typeof id === 'string' && id !== '' && !RESERVED.has(id);
@@ -26,6 +26,9 @@ const clip = (s) => (s.length > MAX_SUMMARY ? s.slice(0, MAX_SUMMARY - 1) + '…
 export function describePermission(toolName, input = {}) {
   const i = input ?? {};
   if (toolName === 'Bash') return `Bash: ${i.command ?? ''}`;
+  if (toolName === DELEGATION_TOOL) {
+    return `Lanzar un subagente «${i.subagent_type ?? '?'}»${i.description ? ` para: ${i.description}` : ''}\n\nEncargo:\n${i.prompt ?? ''}`;
+  }
   const path = i.file_path ?? i.notebook_path ?? i.path ?? i.url;
   return path ? `${toolName} ${path}` : `${toolName} ${JSON.stringify(i)}`;
 }
@@ -161,9 +164,15 @@ function reduceHook(state, b, ts) {
 }
 
 function reducePermission(state, agentKey, b, ts) {
+  if (b.state === 'review') {
+    // Centinela devolvió el cambio al agente para que revise el de otro agente sobre el mismo archivo.
+    const others = Array.isArray(b.with) ? b.with.join(', ') : 'otro agente';
+    pushAction(nodeFor(state, b, ts), { ts, tool: 'Revisión', summary: clip(`Revisa el cambio de ${others} en ${basename(b.path)}`), ok: null, toolUseId: '' });
+    return;
+  }
   if (b.state === 'pending') {
     const node = nodeFor(state, b, ts);
-    state.pending[b.permId] = { permId: b.permId, nodeId: node.id, agentKey: agentKey ?? null, tool: b.tool, input: b.input ?? {}, ts };
+    state.pending[b.permId] = { permId: b.permId, nodeId: node.id, agentKey: agentKey ?? null, tool: b.tool, input: b.input ?? {}, ts, ...(b.review && { review: b.review }) };
     node.status = 'waiting';
     node.current = `Espera permiso · ${b.tool}`;
     return;

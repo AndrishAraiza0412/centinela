@@ -178,12 +178,18 @@ function permissionCard(p, role) {
   // Lo que se ve es lo que se ejecuta: nada recortado, y los caracteres invisibles, a la vista.
   const what = reveal(describePermission(p.tool, p.input));
   const full = reveal(JSON.stringify(p.input, null, 2));
+  const review = p.review && reveal(p.review.with.map((o) => `${o.role} — ${o.change}`).join('\n\n'));
   return el('section', { class: 'perm', role: 'group', 'aria-label': `Permiso pendiente: ${role} quiere ${p.tool}` },
-    el('h3', {}, icon('shield', { size: 14 }), ` Quiere usar ${p.tool}`),
-    what.suspicious || full.suspicious
+    el('h3', {}, icon('shield', { size: 14 }), p.tool === 'Agent' ? ' Quiere lanzar un subagente' : ` Quiere usar ${p.tool}`),
+    what.suspicious || full.suspicious || review?.suspicious
       ? el('p', { class: 'warn', role: 'alert', text: '⚠ La entrada tiene caracteres invisibles o espacios de relleno; se muestran marcados. Revísala antes de permitir.' })
       : null,
     el('p', { class: 'perm-summary', text: what.text }),
+    review
+      ? el('details', { class: 'review' },
+        el('summary', { text: `Otro agente también cambia este archivo: ya vio su cambio y rehízo el suyo (${p.review.with.map((o) => o.role).join(', ')})` }),
+        el('pre', { class: 'raw', text: review.text }))
+      : null,
     el('details', { open: true },
       el('summary', { text: `Entrada completa (${JSON.stringify(p.input).length} caracteres)` }),
       el('pre', { class: 'raw', text: full.text })),
