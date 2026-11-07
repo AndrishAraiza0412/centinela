@@ -407,8 +407,9 @@ input[type="checkbox"] { width: auto; }
   font-size: 14px;
   font-weight: 400;
 }
-.perm-summary { margin: 6px 0; font: 12px var(--mono); overflow-wrap: anywhere; }
+.perm-summary { margin: 6px 0; font: 12px var(--mono); overflow-wrap: anywhere; white-space: pre-wrap; max-height: 14rem; overflow-y: auto; }
 .perm details summary { cursor: pointer; color: var(--muted); font-size: 12px; }
+.perm details.review summary { color: var(--accent); }
 .perm pre.raw { max-height: 10rem; overflow: auto; background: var(--well); border: 1px solid var(--border); border-radius: 6px; padding: 8px; margin: 6px 0 10px; }
 .perm .row { justify-content: flex-start; flex-wrap: nowrap; gap: 6px; }
 .perm .row button { padding: 5px 10px; font-size: 12.5px; white-space: nowrap; }
@@ -465,6 +466,7 @@ kbd { font: 11px var(--mono); color: var(--muted); border: 1px solid var(--borde
 .error:empty { display: none; }
 .note { color: var(--muted); margin: 0; }
 .trust { display: flex; gap: 8px; align-items: center; color: var(--accent); }
+.check { display: flex; gap: 8px; align-items: center; }
 .exit { display: grid; gap: 6px; }
 pre.raw { font: 11.5px/1.5 var(--mono); white-space: pre-wrap; overflow-wrap: anywhere; margin: 0; color: var(--muted); }
 #drawer > div > pre.raw { background: var(--well); border: 1px solid var(--border); border-radius: 8px; padding: 10px; max-height: 24rem; overflow: auto; }

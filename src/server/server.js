@@ -1,7 +1,7 @@
 import http from 'node:http';
 import { readFile } from 'node:fs/promises';
 import { fileURLToPath } from 'node:url';
-import { initState, reduce } from '../shared/graph.js';
+import { initState, reduce, nodeId, ACTIVE } from '../shared/graph.js';
 import { append } from './store.js';
 import { ensureHome } from './paths.js';
 import { checkHostOrigin, bearer, safeEqual } from './auth.js';
@@ -24,6 +24,7 @@ const STATIC = {
   '/icons.js': ['public/icons.js', 'text/javascript; charset=utf-8'],
   '/style.css': ['public/style.css', 'text/css; charset=utf-8'],
   '/shared/graph.js': ['src/shared/graph.js', 'text/javascript; charset=utf-8'],
+  '/shared/models.js': ['src/shared/models.js', 'text/javascript; charset=utf-8'],
 };
 
 export function truncateRec(value, max) {
@@ -180,12 +181,12 @@ export function createServer({ port, uiToken, hookToken, claudeBin, pairCode }) 
       if (body === undefined) return;
       const ac = new AbortController();
       res.on('close', () => !res.writableFinished && ac.abort());
-      const decision = await permissions.request(agentKey, body, { signal: ac.signal });
+      const { decision, message } = await permissions.request(agentKey, body, { signal: ac.signal });
       if (res.destroyed) return;
       return sendJson(res, 200, {
         hookSpecificOutput: {
           hookEventName: 'PermissionRequest',
-          decision: decision === 'allow' ? { behavior: 'allow' } : { behavior: 'deny', message: 'Rechazado desde Centinela.' },
+          decision: decision === 'allow' ? { behavior: 'allow' } : { behavior: 'deny', message: message ?? 'Rechazado desde Centinela.' },
         },
       });
     }
@@ -234,7 +235,13 @@ export function createServer({ port, uiToken, hookToken, claudeBin, pairCode }) 
     });
   });
   const launcher = createLauncher({ claudeBin, port: () => server.address().port, broadcast });
-  const permissions = createPermissions({ broadcast, timeoutMs: Number(process.env.CENTINELA_PERMISSION_TIMEOUT_MS || 300_000) });
+  const nodeOf = (sessionId, agentId) => state.nodes[nodeId(sessionId, agentId)];
+  const permissions = createPermissions({
+    broadcast,
+    timeoutMs: Number(process.env.CENTINELA_PERMISSION_TIMEOUT_MS || 300_000),
+    isActive: (sessionId, agentId) => ACTIVE.has(nodeOf(sessionId, agentId)?.status),
+    roleOf: (b) => (typeof b.agent_type === 'string' && b.agent_type) || nodeOf(b.session_id, b.agent_id)?.role || 'otro agente',
+  });
   server.listen(port, '127.0.0.1');
   return { server, state, broadcast, launcher };
 }
