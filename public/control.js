@@ -1,5 +1,6 @@
 // Controles: lanzar agentes, conversar con ellos, continuar sesiones de terminal y aprobar permisos.
 import { describePermission, reveal } from '/shared/graph.js';
+import { MODEL_GROUPS } from '/shared/models.js';
 import { el, load, save } from '/dom.js';
 import { icon } from '/icons.js';
 
@@ -50,8 +51,12 @@ async function fillRoles(select, cwd, err) {
 function setupDialog(getSelected) {
   const dialog = document.querySelector('#launch-dialog');
   const form = dialog.querySelector('form');
-  const { cwd, role, model, prompt, trust } = form.elements;
+  const { cwd, role, model, prompt, trust, team } = form.elements;
+  model.append(...MODEL_GROUPS.map(([label, models]) => el('optgroup', { label },
+    ...models.map(([value, text]) => el('option', { value, text })))));
   model.value = load('centinela-model') ?? '';
+  if (model.selectedIndex < 0) model.value = ''; // guardado de una lista anterior
+  team.checked = load('centinela-team') !== 'false';
   const err = dialog.querySelector('.error');
   const trustRow = dialog.querySelector('.trust');
   const submit = form.querySelector('button[value="launch"]');
@@ -73,7 +78,7 @@ function setupDialog(getSelected) {
     if (e.submitter?.value === 'cancel') return; // method=dialog: cierra
     e.preventDefault();
     submit.disabled = true;
-    const r = await api('POST', '/api/agents', { role: role.value, model: model.value, cwd: cwd.value.trim(), prompt: prompt.value, trustProject: trust.checked });
+    const r = await api('POST', '/api/agents', { role: role.value, model: model.value, team: team.checked, cwd: cwd.value.trim(), prompt: prompt.value, trustProject: trust.checked });
     submit.disabled = false;
     if (!r.ok) {
       if (r.data?.code === 'untrusted') trustRow.hidden = false;
@@ -81,6 +86,7 @@ function setupDialog(getSelected) {
     }
     save('centinela-cwd', cwd.value.trim());
     save('centinela-model', model.value);
+    save('centinela-team', String(team.checked));
     prompt.value = '';
     dialog.close();
     onLaunched(r.data.agentKey);
