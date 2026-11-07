@@ -4,8 +4,9 @@ import { randomUUID, randomBytes } from 'node:crypto';
 import { createInterface } from 'node:readline';
 import { realpathSync, statSync, existsSync } from 'node:fs';
 import { isAbsolute, join } from 'node:path';
-import { listRoles, builtinAgent } from './roles.js';
+import { listRoles, builtinAgents } from './roles.js';
 import { safeEqual } from './auth.js';
+import { MODELS } from '../shared/models.js';
 
 const STDERR_TAIL = 2000;
 const KILL_AFTER_MS = 5000;
@@ -14,8 +15,16 @@ const SESSION_ID = /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12
 const PROJECT_CONFIG = ['.claude/settings.json', '.claude/settings.local.json', '.mcp.json'];
 // Modos en que cada permiso pasa por PermissionRequest (y por lo tanto por el panel).
 const GATED_MODES = new Set(['default', 'manual']);
-// Alias que `claude --model` resuelve a la última versión; '' = el modelo por defecto.
-export const MODELS = ['', 'opus', 'sonnet', 'haiku'];
+
+// Modo equipo: el agente coordina subagentes (herramienta Agent) de los otros roles. Los
+// subagentes no pueden delegar a su vez, así que el coordinador reparte y hace la revisión cruzada.
+const teamPrompt = (roles) => `Trabajas como coordinador de un equipo. Con la herramienta Agent puedes delegar en estos roles: ${roles.join(', ')}.
+- Si la tarea tiene partes independientes, divídela y lanza varios Agent en el mismo mensaje para que trabajen en paralelo. Si es pequeña, hazla tú.
+- El usuario aprueba cada subagente que lances: en la descripción di para qué lo necesitas.
+- Cada encargo debe ser autocontenido (objetivo, archivos, cuándo está terminado): el subagente no ve esta conversación.
+- Evita que dos subagentes editen el mismo archivo. Si pasa, Centinela hace que cada uno revise el cambio del otro antes de aplicar el suyo; si te reportan un conflicto, decide tú cómo integrarlo.
+- Revisión cruzada: el trabajo de un rol lo revisa otro distinto (lo del desarrollador, qa o seguridad, por ejemplo). Si la revisión encuentra fallos, encarga la corrección y vuelve a revisar, hasta que pase o hasta 3 rondas.
+- Al terminar, resume qué hizo cada rol, qué se revisó y qué quedó pendiente. Si después se te pide algo más, sigue coordinando el equipo.`;
 
 export class LaunchError extends Error {
   constructor(message, status = 400, code) {
@@ -46,6 +55,8 @@ export function createLauncher({ claudeBin, port, broadcast }) {
   // usuario responde 403 y, con onFailure:block, todo lo que pide permiso queda bloqueado (spike).
   // Solo el puerto de Centinela, no todo 127.0.0.1.
   const permSettings = (launchToken) => ({
+    // Lanzar un subagente no pide permiso en modo default: así cada uno pasa por el panel.
+    permissions: { ask: ['Agent'] },
     hooks: {
       PermissionRequest: [{
         matcher: '*',
@@ -57,9 +68,10 @@ export function createLauncher({ claudeBin, port, broadcast }) {
     sandbox: { autoAllowBashIfSandboxed: false, network: { allowedDomains: [`127.0.0.1:${port()}`] } },
   });
 
-  function launch({ role, cwd, prompt, resume, trustProject, model = '' } = {}) {
+  function launch({ role, cwd, prompt, resume, trustProject, model = '', team = false } = {}) {
     const dir = validateCwd(cwd);
-    const found = listRoles(dir).find((r) => r.name === role);
+    const roles = listRoles(dir);
+    const found = roles.find((r) => r.name === role);
     if (!found) throw new LaunchError(`El rol «${String(role)}» no existe en este proyecto ni en tus agentes.`);
     if (found.conflict) {
       throw new LaunchError(`El rol «${role}» existe en tus agentes y también en el proyecto; renombra uno para saber cuál se ejecuta.`);
@@ -73,7 +85,11 @@ export function createLauncher({ claudeBin, port, broadcast }) {
       throw new LaunchError('La sesión a continuar no es un id de sesión válido.');
     }
     if (!MODELS.includes(model)) throw new LaunchError(`El modelo «${String(model)}» no está en la lista.`);
+    if (typeof team !== 'boolean') throw new LaunchError('El modo equipo debe ser verdadero o falso.');
 
+    // Roles incluidos que van inline: el lanzado y, en equipo, todos los que puede delegar.
+    const inline = team ? roles.filter((r) => r.source === 'centinela').map((r) => r.name) : found.source === 'centinela' ? [role] : [];
+    const mates = roles.filter((r) => !r.conflict && r.name !== role).map((r) => r.name);
     const agentKey = randomUUID();
     const launchToken = randomBytes(32).toString('hex');
     const args = [
@@ -81,7 +97,8 @@ export function createLauncher({ claudeBin, port, broadcast }) {
       '--permission-mode', 'default', '--settings', JSON.stringify(permSettings(launchToken)),
       ...(resume ? ['--resume', resume] : []),
       ...(model ? ['--model', model] : []),
-      ...(found.source === 'centinela' ? ['--agents', JSON.stringify(builtinAgent(role))] : []),
+      ...(inline.length ? ['--agents', JSON.stringify(builtinAgents(inline))] : []),
+      ...(team && mates.length ? ['--append-system-prompt', teamPrompt(mates)] : []),
     ];
     const child = spawn(claudeBin, args, { cwd: dir, env: { ...process.env, CENTINELA_AGENT_KEY: agentKey } });
     const agent = { child, launchToken, alive: true, stopped: false, killTimer: null };

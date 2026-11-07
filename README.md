@@ -37,7 +37,14 @@ node bin/centinela-hooks.js uninstall   # quita solo lo que añadió Centinela
 
 ## Agentes lanzados desde el panel
 
-"+ Nuevo agente" lanza `claude -p --agent <rol>` en la carpeta que elijas, con el modelo que elijas (por defecto, Opus, Sonnet o Haiku). Los roles salen de:
+"+ Nuevo agente" lanza `claude -p --agent <rol>` en la carpeta que elijas, con el modelo que elijas: el de tu configuración, el más reciente de cada familia o una versión concreta (Fable 5.1 y 5, Opus 5.5 a 4.6, Sonnet 5.5, 5 y 4.6, Haiku 5.5 y 4.5; la lista está en `src/shared/models.js`).
+
+**Equipo** (casilla del diálogo, activada por defecto): el agente recibe los demás roles como subagentes y la instrucción de repartir las partes independientes en paralelo, encargar a un rol distinto la revisión de cada resultado, mandar corregir lo que falle (hasta 3 rondas) y seguir coordinando cuando le pidas más. Los subagentes no pueden delegar a su vez: el coordinador reparte. Sus permisos pasan por el panel igual que los del agente; para ver cada subagente como tarjeta, instala los hooks de observación.
+
+- **Lanzar un subagente pide permiso** (en todos los agentes lanzados, con o sin equipo): la tarjeta dice qué rol, para qué y el encargo completo.
+- **Dos agentes, un archivo:** si un agente quiere cambiar un archivo que otro agente aún activo ya cambió (o está pidiendo cambiar), Centinela no te lo pregunta todavía: le devuelve al agente el cambio del otro para que relea el archivo e integre ambos, o explique el choque al coordinador. Su segundo intento te llega como tarjeta normal, marcada «Otro agente también cambia este archivo», con el cambio del otro para comparar. En la tarjeta del agente queda la acción «Revisión».
+
+Los roles salen de:
 
 - `roles/*.md` de Centinela (incluidos): desarrollador, arquitecto, legal, diseñador, qa, seguridad, devops, documentador, producto y datos. Se pasan con `--agents` al lanzar; no tocan tu configuración. Si tú o el proyecto tienen un rol con el mismo nombre, se usa ese.
 - Tu carpeta de agentes de Claude Code (`agents/*.md`) y `.claude/agents/*.md` del proyecto.

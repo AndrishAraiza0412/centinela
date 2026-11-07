@@ -32,10 +32,11 @@ function readRoles(dir, source) {
     .map((fm) => ({ name: fm.name, description: fm.description ?? '', source, prompt: fm.prompt }));
 }
 
-// Definición para `claude --agents` de un rol incluido.
-export function builtinAgent(name) {
-  const r = readRoles(BUILTIN_DIR, 'centinela').find((x) => x.name === name);
-  return r && { [r.name]: { description: r.description, prompt: r.prompt } };
+// Definiciones para `claude --agents` de los roles incluidos con esos nombres.
+export function builtinAgents(names) {
+  return Object.fromEntries(readRoles(BUILTIN_DIR, 'centinela')
+    .filter((r) => names.includes(r.name))
+    .map((r) => [r.name, { description: r.description, prompt: r.prompt }]));
 }
 
 // cwd ya validado (absoluto, real) por quien llama.

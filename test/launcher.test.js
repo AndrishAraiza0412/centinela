@@ -188,6 +188,7 @@ test('spawn args never use shell', async () => {
   assert.ok(!argv.includes('hola'), 'prompt goes through stdin, never argv');
   assert.equal(init.body.agentKey, agentKey);
   const settings = JSON.parse(argv[argv.indexOf('--settings') + 1]);
+  assert.deepEqual(settings.permissions.ask, ['Agent'], 'launching a subagent goes through the panel');
   const hook = settings.hooks.PermissionRequest[0].hooks[0];
   assert.equal(hook.url, 'http://127.0.0.1:4317/hooks/permission');
   assert.equal(hook.onFailure, 'block');
@@ -219,6 +220,22 @@ test('a built-in role is passed inline with --agents; --model only when chosen',
   const init2 = await waitFor(() => recs.find((r) => r.agentKey === user.agentKey && r.kind === 'stream' && r.body.subtype === 'init'));
   assert.ok(!init2.body.argv.includes('--agents') && !init2.body.argv.includes('--model'));
   launcher.stop(user.agentKey);
+});
+
+test('team mode inlines every built-in role and asks the agent to delegate and cross-review', async () => {
+  const { recs, launcher } = harness();
+  const { agentKey } = launcher.launch({ role: 'tester', cwd: project, prompt: 'hola', model: 'claude-sonnet-5', team: true });
+  const init = await waitFor(() => recs.find((r) => r.agentKey === agentKey && r.kind === 'stream' && r.body.subtype === 'init'));
+  const argv = init.body.argv;
+  assert.equal(argv[argv.indexOf('--model') + 1], 'claude-sonnet-5');
+  const agents = Object.keys(JSON.parse(argv[argv.indexOf('--agents') + 1]));
+  assert.ok(agents.includes('legal') && agents.includes('desarrollador'));
+  assert.ok(!agents.includes('qa'), 'a user role with a built-in name is not overridden');
+  const system = argv[argv.indexOf('--append-system-prompt') + 1];
+  assert.match(system, /paralelo/);
+  assert.match(system, /\bqa\b/, 'the user role is offered too');
+  assert.doesNotMatch(system, /tester|auditor/, 'neither itself nor a conflicting role');
+  launcher.stop(agentKey);
 });
 
 test('a model outside the list -> 400', async () => {
