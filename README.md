@@ -86,4 +86,4 @@ npm test
 
 Test variables: `CENTINELA_HOME`, `CENTINELA_PORT`, `CENTINELA_CLAUDE_BIN`, `CENTINELA_NO_OPEN`, `CENTINELA_PERMISSION_TIMEOUT_MS`.
 
-Documentation (in Spanish): `docs/diseno-v1.md` (design and threat model), `docs/plan-v1.md`, `docs/spike-notes.md`, `docs/decisiones-v1.md`, `docs/pendientes-v1.md`; visual system in `DESIGN.md` and product in `PRODUCT.md`.
+Documentation: `docs/diseno-v1.md` (design and threat model), `docs/plan-v1.md`, `docs/spike-notes.md`, `docs/decisiones-v1.md`, `docs/pendientes-v1.md`; visual system in `DESIGN.md` and product in `PRODUCT.md`.

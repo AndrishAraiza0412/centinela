@@ -1,51 +1,51 @@
-# Spike (Task 1) — notas
+# Spike (Task 1) — notes
 
-Claude Code 2.1.295, Node 24.21.0, 2026-10-22. Sesión: `claude -p --permission-mode default --settings spike/settings.json --output-format stream-json --verbose "Usa el subagente Explore para listar los archivos de este directorio y luego crea hola.txt con 'hola'"`.
-El servidor de captura respondía **deny** a `PermissionRequest` (variante segura del spike: prueba que la respuesta se respeta sin aprobar nada a ciegas).
-Fixtures: `test/fixtures/subagent-session.jsonl` (17 hooks), `permission-request.jsonl` (PreToolUse Write + PermissionRequest), `stream-json.jsonl` (salida de esa misma sesión, sin líneas `system/hook_*` ni cuerpos de skills). Rutas personales reemplazadas por `/tmp/demo` y `/Users/me`.
+Claude Code 2.1.295, Node 24.21.0, 2026-10-22. Session: `claude -p --permission-mode default --settings spike/settings.json --output-format stream-json --verbose "Usa el subagente Explore para listar los archivos de este directorio y luego crea hola.txt con 'hola'"`.
+The capture server answered **deny** to `PermissionRequest` (the spike's safe variant: it proves the response is respected without approving anything blindly).
+Fixtures: `test/fixtures/subagent-session.jsonl` (17 hooks), `permission-request.jsonl` (PreToolUse Write + PermissionRequest), `stream-json.jsonl` (output of that same session, without `system/hook_*` lines or skill bodies). Personal paths replaced with `/tmp/demo` and `/Users/me`.
 
-## (a) Herramienta de delegación
+## (a) Delegation tool
 
 `tool_name: "Agent"`. `tool_input`:
 ```json
 {"description":"List files in directory","prompt":"List all files …","subagent_type":"Explore","run_in_background":false}
 ```
-`PostToolUse` del `Agent` llega con el mismo `tool_use_id` después de `SubagentStop`.
+The `Agent`'s `PostToolUse` arrives with the same `tool_use_id` after `SubagentStop`.
 
 ## (b) SubagentStart / SubagentStop
 
-- `SubagentStart`: `session_id, transcript_path, cwd, prompt_id, agent_id, agent_type, hook_event_name`. **No trae `tool_use_id` ni el prompt** → emparejar por `subagent_type` (cola del plan, Task 2) sigue siendo necesario.
-- `SubagentStop`: lo anterior + `permission_mode, effort, stop_hook_active, agent_transcript_path, last_assistant_message, background_tasks, session_crons`.
-- Herramientas dentro del subagente: `PreToolUse`/`PostToolUse` con `agent_id: "aea2d15422a3d1748"`, `agent_type: "Explore"`, mismo `session_id` que el padre.
+- `SubagentStart`: `session_id, transcript_path, cwd, prompt_id, agent_id, agent_type, hook_event_name`. **It carries neither `tool_use_id` nor the prompt** → matching by `subagent_type` (the plan's queue, Task 2) is still necessary.
+- `SubagentStop`: the above + `permission_mode, effort, stop_hook_active, agent_transcript_path, last_assistant_message, background_tasks, session_crons`.
+- Tools inside the subagent: `PreToolUse`/`PostToolUse` with `agent_id: "aea2d15422a3d1748"`, `agent_type: "Explore"`, same `session_id` as the parent.
 
-## (c) PermissionRequest en `-p`
+## (c) PermissionRequest in `-p`
 
-- **Sí se dispara en `-p`** y la respuesta del hook se respeta: deny → `hola.txt` no se creó; el modelo recibió el `message` del deny.
-- Cuerpo: comunes + `tool_name, tool_input, permission_suggestions` (p. ej. `{"type":"setMode","mode":"acceptEdits","destination":"session"}`). **No trae `tool_use_id`** → el panel no puede emparejarlo por id con el `PreToolUse`; usar el último `PreToolUse` de la sesión con mismo `tool_name` (+ `tool_input` igual).
-- Tras un deny no llega `PostToolUse` ni `PostToolUseFailure` para esa herramienta. En `stream-json` aparece `{"type":"system","subtype":"permission_denied","tool_name","tool_use_id","decision_reason_type":"hook","message"}`, y `result.permission_denials[]`.
-- **Requiere `--permission-mode default`.** Primera corrida sin él: el `settings.json` del usuario tiene `permissions.defaultMode: "auto"` → el clasificador aprobó el Write y `PermissionRequest` nunca se disparó. No hace falta `--permission-prompt-tool` (Step 4 no aplica).
+- **It does fire in `-p`** and the hook's response is respected: deny → `hola.txt` was not created; the model received the deny `message`.
+- Body: common fields + `tool_name, tool_input, permission_suggestions` (e.g. `{"type":"setMode","mode":"acceptEdits","destination":"session"}`). **It has no `tool_use_id`** → the dashboard cannot match it by id with the `PreToolUse`; use the session's last `PreToolUse` with the same `tool_name` (+ equal `tool_input`).
+- After a deny, neither `PostToolUse` nor `PostToolUseFailure` arrives for that tool. In `stream-json` there is `{"type":"system","subtype":"permission_denied","tool_name","tool_use_id","decision_reason_type":"hook","message"}`, and `result.permission_denials[]`.
+- **It requires `--permission-mode default`.** First run without it: the user's `settings.json` has `permissions.defaultMode: "auto"` → the classifier approved the Write and `PermissionRequest` never fired. `--permission-prompt-tool` is not needed (Step 4 does not apply).
 
-## Hallazgos no previstos
+## Unexpected findings
 
-1. **Sandbox del usuario bloquea los hooks http a 127.0.0.1.** Con `sandbox.enabled: true`, la primera corrida recibió `HTTP 403` en todos los hooks (stderr: `SessionEnd hook [http://127.0.0.1:4318/hooks/event] failed: HTTP 403`); el servidor no recibió nada (un `curl` directo sí daba 200). Añadir en `--settings` `"sandbox":{"enabled":true,"network":{"allowedDomains":["127.0.0.1","localhost"]}}` lo resolvió (la segunda corrida cambió también el modo de permisos; el 403 es de red, así que se atribuye a esto). Consecuencias: el hook de permisos con `onFailure:"block"` bloquearía **todo** sin esta entrada; el instalador (Task 5) también debe añadirla.
-2. **`SessionStart` no llega por hook `http`** (0 de 2 corridas, mientras los demás eventos sí). El nodo principal debe crearse con el primer evento de la sesión (`UserPromptSubmit`/`PreToolUse`/…). En agentes lanzados, `stream-json` `system/init` trae `session_id` y `cwd`.
-3. Los agentes lanzados heredan los hooks y plugins del usuario (en el fixture corrieron otros hooks `SessionStart` del usuario). Es esperado (mismo Claude Code), pero añade eventos y coste.
-4. `SessionEnd` trae `reason: "other"` en `-p`, sin `permission_mode`.
-5. `UserPromptSubmit` trae `prompt` y `prompt_id`; todos los eventos de la sesión comparten `prompt_id`.
+1. **The user's sandbox blocks http hooks to 127.0.0.1.** With `sandbox.enabled: true`, the first run got `HTTP 403` on all hooks (stderr: `SessionEnd hook [http://127.0.0.1:4318/hooks/event] failed: HTTP 403`); the server received nothing (a direct `curl` did give 200). Adding `"sandbox":{"enabled":true,"network":{"allowedDomains":["127.0.0.1","localhost"]}}` in `--settings` resolved it (the second run also changed the permission mode; the 403 is a network error, so it is attributed to this). Consequences: the permission hook with `onFailure:"block"` would block **everything** without this entry; the installer (Task 5) must add it too.
+2. **`SessionStart` does not arrive through an `http` hook** (0 of 2 runs, while the other events do). The main node must be created with the session's first event (`UserPromptSubmit`/`PreToolUse`/…). In launched agents, `stream-json` `system/init` carries `session_id` and `cwd`.
+3. Launched agents inherit the user's hooks and plugins (other user `SessionStart` hooks ran in the fixture). This is expected (same Claude Code), but it adds events and cost.
+4. `SessionEnd` carries `reason: "other"` in `-p`, without `permission_mode`.
+5. `UserPromptSubmit` carries `prompt` and `prompt_id`; all events in the session share `prompt_id`.
 
-## (d) Líneas `stream-json` (salida)
+## (d) `stream-json` lines (output)
 
-- `{"type":"system","subtype":"init","cwd","session_id","tools":[…],…}` — primera línea útil.
+- `{"type":"system","subtype":"init","cwd","session_id","tools":[…],…}` — first useful line.
 - `{"type":"assistant","message":{"content":[{"type":"text","text":…}|{"type":"tool_use",…}|{"type":"thinking",…}]},"parent_tool_use_id":null|"toolu_…","session_id"}`.
 - `{"type":"user","message":{"content":[{"type":"tool_result","tool_use_id",…}]}}`.
-- Subagentes: `system/task_started` (`task_id` = **`agent_id` del hook**, `tool_use_id` del `Agent`, `subagent_type`, `prompt`, `description`), `system/task_progress`, `system/task_updated`, `system/task_notification`. Para agentes lanzados esto da la arista exacta sin cola.
-- `system/permission_denied` (ver c), `rate_limit_event`.
+- Subagents: `system/task_started` (`task_id` = **the hook's `agent_id`**, the `Agent`'s `tool_use_id`, `subagent_type`, `prompt`, `description`), `system/task_progress`, `system/task_updated`, `system/task_notification`. For launched agents this gives the exact edge without a queue.
+- `system/permission_denied` (see c), `rate_limit_event`.
 - Final: `{"type":"result","subtype":"success","is_error":false,"result":"<texto>","session_id","num_turns","total_cost_usd","permission_denials":[…],…}`.
 
-## (e) Mensaje de usuario por stdin (`--input-format stream-json`)
+## (e) User message through stdin (`--input-format stream-json`)
 
-Una línea por mensaje; probado y respondido:
+One line per message; tested and answered:
 ```json
 {"type":"user","message":{"role":"user","content":"Responde solo: uno"}}
 ```
-→ `assistant` con `[{"type":"text","text":"uno"}]` y `result` `"uno"`; el proceso sale 0 al cerrar stdin.
+→ `assistant` with `[{"type":"text","text":"uno"}]` and `result` `"uno"`; the process exits 0 when stdin closes.

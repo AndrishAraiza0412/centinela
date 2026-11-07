@@ -6,39 +6,39 @@ web
 
 ## Users
 
-Una sola persona: el desarrollador dueño de la Mac, con varias sesiones de Claude Code abiertas a la vez (en terminales y lanzadas desde el propio panel). Tiene Centinela abierto en una pestaña o en un segundo monitor mientras trabaja, y entra a él para ver qué pasa, aprobar permisos y dar órdenes a los agentes.
+A single person: the developer who owns the Mac, with several Claude Code sessions open at once (in terminals and launched from the dashboard itself). They keep Centinela open in a tab or on a second monitor while working, and go to it to see what is happening, approve permissions and give orders to agents.
 
 ## Product Purpose
 
-Centinela muestra en vivo qué hace cada sesión y subagente de Claude Code y quién delegó qué a quién, y deja lanzar agentes por rol, conversar con ellos, detenerlos y aprobar sus permisos sin cambiar de terminal. Éxito: de un vistazo se sabe **quién hace qué y quién está esperando** (un permiso o una respuesta), y se actúa en segundos.
+Centinela shows live what each Claude Code session and subagent is doing and who delegated what to whom, and lets you launch agents by role, talk to them, stop them and approve their permissions without switching terminals. Success: at a glance you know **who is doing what and who is waiting** (for a permission or a response), and you act within seconds.
 
 ## Positioning
 
-Observa las sesiones reales de Claude Code del usuario (vía hooks) y controla agentes lanzados con su propia suscripción por la CLI `claude`, sin API keys ni servicios externos; todo es local y cada permiso de un agente lanzado pasa por el panel con su entrada completa a la vista.
+It observes the user's real Claude Code sessions (through hooks) and controls agents launched with their own subscription through the `claude` CLI, without API keys or external services; everything is local and every permission of a launched agent goes through the dashboard with its full input in view.
 
 ## Operating Context
 
-- Servidor Node local en `127.0.0.1:4317`; la página se abre con un código de emparejamiento de un solo uso que imprime `node bin/centinela.js`.
-- Eventos: hooks `http` de Claude Code (sesiones de terminal) y `stream-json` de los procesos `claude -p` lanzados.
-- Uso en paralelo con el trabajo: el panel se consulta a ratos y reclama atención solo cuando un agente espera un permiso (tarjeta y aviso del navegador).
+- Local Node server on `127.0.0.1:4317`; the page opens with a single-use pairing code printed by `node bin/centinela.js`.
+- Events: Claude Code `http` hooks (terminal sessions) and `stream-json` from launched `claude -p` processes.
+- Used alongside work: the dashboard is checked now and then and demands attention only when an agent is waiting for a permission (card and browser notification).
 
 ## Capabilities and Constraints
 
-- Ver sesiones, subagentes y delegaciones (arista con el inicio del prompt delegado), acciones por agente con su resultado, conversación de los agentes lanzados, salida y stderr al terminar.
-- Lanzar agentes por rol (`agents/*.md` del usuario o `.claude/agents/*.md` del proyecto), enviarles prompts, detenerlos, "Continuar aquí" sobre una sesión de terminal (`--resume`).
-- Aprobar permisos: Permitir / Permitir esta misma acción durante la sesión / Rechazar; sin respuesta en 5 minutos o con el servidor apagado, se rechaza. Todo Bash de un agente lanzado pasa por el panel.
-- Datos disponibles por agente lanzado: costo estimado y tokens que reporta `claude -p` (con suscripción es una estimación, no un cobro).
-- Restricciones: solo local; Node ≥ 22 sin dependencias npm; sin `innerHTML`; textos de eventos con `textContent`; CSP estricta; interfaz en español.
-- No existe (no inventar): cuotas de API, TPM/latencias de un "cluster", ramas/commits por agente, tableros de objetivos, vista previa de navegador, voz, pausa de agentes (solo detener).
+- See sessions, subagents and delegations (an edge with the start of the delegated prompt), actions per agent with their result, conversation of launched agents, output and stderr on exit.
+- Launch agents by role (the user's `agents/*.md` or the project's `.claude/agents/*.md`), send them prompts, stop them, "Continuar aquí" (Continue here) on a terminal session (`--resume`).
+- Approve permissions: Allow / Allow this same action for the session / Reject; with no answer in 5 minutes or with the server off, it is rejected. All Bash from a launched agent goes through the dashboard.
+- Data available per launched agent: estimated cost and tokens reported by `claude -p` (on a subscription this is an estimate, not a charge).
+- Constraints: local only; Node ≥ 22 with no npm dependencies; no `innerHTML`; event text through `textContent`; strict CSP; interface in Spanish.
+- Does not exist (do not invent): API quotas, TPM/latencies of a "cluster", branches/commits per agent, goal boards, browser preview, voice, pausing agents (only stopping).
 
 ## Evidence on Hand
 
-- Diseño de referencia del usuario ("Agent Swarm Board", 2026-10-22); sus datos son de muestra, no del producto.
-- Fixtures reales de eventos en `test/fixtures/`.
+- The user's reference design ("Agent Swarm Board", 2026-10-22); its data is sample data, not from the product.
+- Real event fixtures in `test/fixtures/`.
 
 ## Product Principles
 
-1. Quién espera, primero: un permiso pendiente nunca puede pasar desapercibido.
-2. Lo que se ve es lo que se ejecuta: nada recortado ni engañoso en lo que se aprueba.
-3. Solo datos reales: si Centinela no lo mide, no aparece.
-4. Seguro por defecto: los controles de seguridad y permisos no se relajan por diseño.
+1. Who is waiting comes first: a pending permission can never go unnoticed.
+2. What you see is what runs: nothing truncated or misleading in what gets approved.
+3. Real data only: if Centinela does not measure it, it does not appear.
+4. Secure by default: security and permission controls are not relaxed by design.
