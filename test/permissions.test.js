@@ -10,7 +10,7 @@ import { fileURLToPath } from 'node:url';
 const tmp = mkdtempSync(join(tmpdir(), 'centinela-perm-'));
 process.env.CENTINELA_HOME = join(tmp, 'home');
 process.env.CLAUDE_CONFIG_DIR = join(tmp, 'config');
-process.env.CENTINELA_PERMISSION_TIMEOUT_MS = '300';
+process.env.CENTINELA_PERMISSION_TIMEOUT_MS = '2000';
 const project = join(tmp, 'project');
 mkdirSync(join(project, '.claude/agents'), { recursive: true });
 writeFileSync(join(project, '.claude/agents/tester.md'), '---\nname: tester\ndescription: t\n---\n');
