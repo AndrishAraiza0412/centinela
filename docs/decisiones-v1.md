@@ -1,49 +1,49 @@
-# Centinela v1 — decisiones de implementación
+# Centinela v1 — implementation decisions
 
-Decisiones que tomé al ejecutar el plan cuando el plan o el spec no lo resolvían, o cuando la evidencia obligó a desviarse. Formato: lo decidido — por qué — qué cuesta si estaba mal. Los pendientes menores están en `pendientes-v1.md`.
+Decisions made while executing the plan when the plan or the spec did not settle them, or when the evidence forced a deviation. Format: what was decided — why — what it costs if wrong. Minor pending items are in `pendientes-v1.md`.
 
-- **Setup:** sin worktree ni scripts task-start/task-done (requieren git) — el plan prohíbe git hasta Task 6 — coste si mal: rangos de review se reconstruyen a mano en Task 6.
-- **Task 1:** el hook de permisos del spike respondió deny en vez de allow — el clasificador auto bloqueó un agente con allow-all; el usuario eligió la variante deny — coste si mal: el camino allow se verifica recién en Task 8/10.
-- **Task 1:** hallazgos del spike llevados al spec §2 y a Tasks 2, 5, 7 (SessionStart no llega por http; tool 'Agent'; sandbox.network.allowedDomains 127.0.0.1; deny → Action ok:false) — coste si mal: reabrir esas tasks.
-- **Task 2:** añadido package.json mínimo ("type":"module", "test":"node --test") — el plan no lo crea y sin él Node avisa en cada import ESM — coste si mal: borrar un archivo.
-- **Task 2:** la cola de delegaciones vive en un WeakMap por State, no en el State — el plan fija State = {nodes, edges, pending} y la cola no debe ir por SSE — coste si mal: mover un campo.
-- **Task 2:** tests extra además de los del brief: nodo principal sin SessionStart, PostToolUseFailure, primera coincidencia de delegación, deny → ok:false, exit≠0 → error, evento desconocido — cubren las reglas añadidas tras el spike.
-- **Task 3:** createServer llama ensureHome() y hace listen(port,'127.0.0.1') él mismo — append falla sin el dir; el plan lo pedía solo en bin — coste si mal: mover una línea.
-- **Task 3:** CENTINELA_NO_OPEN=1 desactiva `open` en bin/centinela.js — el test de puerto ocupado arranca bin y no debe abrir el navegador — coste si mal: una variable de entorno sin documentar.
-- **Task 3:** estáticos como lista cerrada {'/': public/index.html, '/app.js': public/app.js, '/graph.js': src/shared/graph.js} — evita path traversal; Task 4 debe importar graph.js desde '/graph.js' — coste si mal: añadir una entrada.
-- **Task 3:** JSON inválido en POST → 400 y /events acepta solo ?token= (no Bearer) — no estaban en el brief — coste si mal: bajo.
-- **Task 3:** tests extra 413 (>5 MB) y /events con token incorrecto → 401.
-- **Task 4:** estáticos alineados con el brief — /shared/graph.js y /style.css en la lista cerrada (antes /graph.js, ruling de Task 3) — test nuevo 'serves shared graph module' RED→GREEN.
-- **Task 4:** revierte el ruling de Task 2 — la cola de delegaciones pasa al State como `delegations: []` — el navegador reduce sobre el snapshot JSON de /api/state y el WeakMap no sobrevive a JSON (test 'reduce continues on a JSON round-tripped state' RED→GREEN) — coste si mal: un campo más en /api/state.
-- **Task 4:** Cytoscape inyecta un <style> inline que la CSP bloquea; el <link> de style.css lleva id="__________cytoscape_stylesheet" (Cytoscape no inyecta si existe) y #graph tiene position:relative — la CSP del spec queda intacta — coste si mal: un aviso en consola si Cytoscape cambia ese id en otra versión (está fijada a 3.30.2).
-- **Task 4:** el pulso de 'working' es un toggle de clase de Cytoscape cada 700 ms (no CSS: el grafo es canvas), desactivado con prefers-reduced-motion.
-- **Task 4:** sin nodos compuestos por proyecto; agrupar = breadthfirst con las sesiones principales como raíces + filtro de proyecto — coste si mal: añadir parents compuestos.
-- **Task 4:** "JSON crudo" muestra el nodo + eventos vistos desde que se abrió la página (el snapshot no trae registros crudos).
-- **Task 4:** atajo consciente — un evento entre snapshot y respuesta puede aplicarse dos veces (comentado en app.js; arreglo: número de secuencia en el servidor).
-- **Task 5:** entradas propias reconocidas por URL (http://127.0.0.1:<port>/hooks/event), sin la clave "_centinela" del brief — no verificamos que Claude Code tolere claves desconocidas en settings.json y un esquema estricto invalidaría el archivo del usuario — coste si mal: un hook ajeno con esa misma URL sería tratado como nuestro.
-- **Task 5:** "127.0.0.1 lo añadimos nosotros" se guarda en ~/.centinela/sandbox-domain-added, no en settings.json; unmerge(settings, {removeDomain}) — mismo motivo.
-- **Task 5:** matcher "*" (forma verificada en el spike) en vez de "" del brief.
-- **Task 5:** StopFailure añadido a OBSERVED_EVENTS — el settings del usuario ya lo usa y graph.js lo mapea a error.
-- **Task 5:** sin --yes y sin TTY → no escribe y sale 1 (no se puede confirmar).
-- **Task 6:** .gitignore con node_modules/ y .DS_Store (los directorios de trabajo locales van en .git/info/exclude).
-- **Task 7:** createLauncher({claudeBin, port: () => número, broadcast}) devuelve {launch, sendPrompt, stop, tokenFor, status} — el puerto real solo se conoce tras listen (tests en puerto 0) — coste si mal: firma distinta a la del brief.
-- **Task 7:** roles con nombre que no cumple ^[A-Za-z0-9][\w.-]*$ se descartan en listRoles — un repo podría declarar name: --dangerously-skip-permissions y colarlo como bandera de `claude`; resume debe ser UUID por lo mismo — no estaba en el brief.
-- **Task 7:** matcher "*" en permSettings (forma del spike), no "".
-- **Task 7:** 'exited' lleva signal y stopped; graph.js marca done si stopped (detener ≠ error) y 'started' lleva role/cwd para que el nodo lanzado muestre su rol (test graph RED→GREEN).
-- **Task 7:** POST /api/agents/:key/* sobre agente ya terminado → 409 (el brief solo definía 404 para desconocido).
-- **Task 7:** claudeConfigDir() movido a paths.js y compartido por install-hooks y roles.
-- **Task 7:** `npm test` = node --test "test/*.test.js"; fake-claude.mjs sale 0 si no lo lanzó Centinela (node --test pelado también lo recoge).
-- **Task 8:** createPermissions({broadcast, timeoutMs}) y request(agentKey, body, {signal}) — si Claude corta la petición (agente detenido) la solicitud se decide deny con reason 'cancelled' y la tarjeta desaparece; no estaba en el brief — test RED→GREEN (y reforzado: la mutación sobrevivía porque el timeout también limpiaba).
-- **Task 8:** deny responde con message "Rechazado desde Centinela." (el spike mostró que el modelo recibe el message); decided lleva reason 'timeout'|'cancelled' cuando no decide el usuario.
-- **Task 8:** POST /api/permissions/:id con decisión inválida → 400; desconocida o ya decidida → 404.
-- **Task 8:** la prueba con `claude` real se hace en Task 10 desde la UI (Task 9), aprobando el usuario — no aprobar permisos de un agente real por API en nombre del usuario.
-- **Task 9:** la conversación de un agente lanzado entra al grafo (node.messages: prompts del usuario como launch/event:'prompt' + texto de 'assistant' del hilo principal, tope 200) — sin esto se perdía al recargar la página; el prompt inicial se anuncia tras 'started' porque antes el nodo no existe — tests graph/launcher RED→GREEN.
-- **Task 9:** los registros kind:'permission' viajan por SSE SIN recortar — con el recorte a 2 000 un comando largo podía esconder su final en la tarjeta y el usuario aprobaría algo que no vio entero (riesgo de seguridad) — test server RED→GREEN. Review Focus 1 sigue cumpliéndose para hooks/stream.
-- **Task 9:** Pending lleva agentKey y la tarjeta toma el rol del agente dueño del launch-token (session_id solo de respaldo) — test graph RED→GREEN.
-- **Task 9:** controles en public/control.js y helpers en public/dom.js (lista cerrada de estáticos ampliada, test) — app.js habría pasado de 400 líneas.
-- **Task 9:** el esqueleto del panel se construye una vez por nodo (clave id|launched) y cada evento solo actualiza contenido — si no, cada SSE borraba lo que el usuario escribía en el prompt.
-- **Task 9:** tarjetas de permiso sobre la esquina superior derecha del GRAFO (misma celda de grid), no fixed sobre la página — tapaban el composer del panel; <details> de la entrada completa abierto por defecto.
-- **Task 9:** ⌘/Ctrl+Enter envía el prompt; "Activar avisos" solo aparece si Notification.permission === 'default' (el navegador exige un gesto del usuario).
-- **Final:** snapshot del estado como primer frame SSE (acepto el desacuerdo del revisor con el atajo de Task 4) — elimina la ventana de doble aplicación y el fetch/buffer del cliente; aristas con id por extremos+etiqueta — test 'SSE starts with a snapshot' RED→GREEN.
-- **Final:** RECHAZO la propuesta del revisor de añadir 127.0.0.1 al sandbox siempre — el auditor muestra que ese dominio es lo que habilita C1; se queda solo con sandbox.enabled — coste si mal: quien active el sandbox después pierde la observación en silencio.
-- **Final:** no se aplica --setting-sources user (sin verificar si sigue resolviendo .claude/agents del proyecto); lo cubre la exigencia de confianza + el chequeo de modo en init — coste si mal: un repo confiado puede traer hooks propios.
+- **Setup:** no worktree or task-start/task-done scripts (they require git) — the plan forbids git until Task 6 — cost if wrong: review ranges are rebuilt by hand in Task 6.
+- **Task 1:** the spike's permission hook answered deny instead of allow — the auto classifier blocked an agent with allow-all; the user chose the deny variant — cost if wrong: the allow path is only verified in Task 8/10.
+- **Task 1:** spike findings carried into spec §2 and Tasks 2, 5, 7 (SessionStart does not arrive over http; tool 'Agent'; sandbox.network.allowedDomains 127.0.0.1; deny → Action ok:false) — cost if wrong: reopening those tasks.
+- **Task 2:** added a minimal package.json ("type":"module", "test":"node --test") — the plan does not create it and without it Node warns on every ESM import — cost if wrong: deleting a file.
+- **Task 2:** the delegation queue lives in a WeakMap per State, not in the State — the plan fixes State = {nodes, edges, pending} and the queue must not travel over SSE — cost if wrong: moving a field.
+- **Task 2:** extra tests beyond those in the brief: main node without SessionStart, PostToolUseFailure, first delegation match, deny → ok:false, exit≠0 → error, unknown event — they cover the rules added after the spike.
+- **Task 3:** createServer calls ensureHome() and does listen(port,'127.0.0.1') itself — append fails without the dir; the plan asked for it only in bin — cost if wrong: moving a line.
+- **Task 3:** CENTINELA_NO_OPEN=1 disables `open` in bin/centinela.js — the port-in-use test starts bin and must not open the browser — cost if wrong: an undocumented environment variable.
+- **Task 3:** static files as a closed list {'/': public/index.html, '/app.js': public/app.js, '/graph.js': src/shared/graph.js} — avoids path traversal; Task 4 must import graph.js from '/graph.js' — cost if wrong: adding an entry.
+- **Task 3:** invalid JSON on POST → 400 and /events accepts only ?token= (not Bearer) — these were not in the brief — cost if wrong: low.
+- **Task 3:** extra tests for 413 (>5 MB) and /events with a wrong token → 401.
+- **Task 4:** static files aligned with the brief — /shared/graph.js and /style.css in the closed list (formerly /graph.js, the Task 3 ruling) — new test 'serves shared graph module' RED→GREEN.
+- **Task 4:** reverses the Task 2 ruling — the delegation queue moves into the State as `delegations: []` — the browser reduces over the JSON snapshot from /api/state and the WeakMap does not survive JSON (test 'reduce continues on a JSON round-tripped state' RED→GREEN) — cost if wrong: one more field in /api/state.
+- **Task 4:** Cytoscape injects an inline <style> that the CSP blocks; the style.css <link> carries id="__________cytoscape_stylesheet" (Cytoscape does not inject if it exists) and #graph has position:relative — the spec's CSP stays intact — cost if wrong: a console warning if Cytoscape changes that id in another version (it is pinned to 3.30.2).
+- **Task 4:** the 'working' pulse is a Cytoscape class toggle every 700 ms (not CSS: the graph is a canvas), disabled with prefers-reduced-motion.
+- **Task 4:** no compound nodes per project; grouping = breadthfirst with main sessions as roots + a project filter — cost if wrong: adding compound parents.
+- **Task 4:** "raw JSON" shows the node + events seen since the page was opened (the snapshot carries no raw records).
+- **Task 4:** deliberate shortcut — an event between snapshot and response can be applied twice (commented in app.js; fix: a sequence number on the server).
+- **Task 5:** own entries recognized by URL (http://127.0.0.1:<port>/hooks/event), without the brief's "_centinela" key — we did not verify that Claude Code tolerates unknown keys in settings.json and a strict schema would invalidate the user's file — cost if wrong: a foreign hook with that same URL would be treated as ours.
+- **Task 5:** "we added 127.0.0.1" is stored in ~/.centinela/sandbox-domain-added, not in settings.json; unmerge(settings, {removeDomain}) — same reason.
+- **Task 5:** matcher "*" (the form verified in the spike) instead of the brief's "".
+- **Task 5:** StopFailure added to OBSERVED_EVENTS — the user's settings already use it and graph.js maps it to error.
+- **Task 5:** without --yes and without a TTY → does not write and exits 1 (it cannot confirm).
+- **Task 6:** .gitignore with node_modules/ and .DS_Store (local working directories go in .git/info/exclude).
+- **Task 7:** createLauncher({claudeBin, port: () => number, broadcast}) returns {launch, sendPrompt, stop, tokenFor, status} — the real port is known only after listen (tests on port 0) — cost if wrong: a signature different from the brief's.
+- **Task 7:** roles whose name does not match ^[A-Za-z0-9][\w.-]*$ are discarded in listRoles — a repo could declare name: --dangerously-skip-permissions and slip it in as a `claude` flag; resume must be a UUID for the same reason — not in the brief.
+- **Task 7:** matcher "*" in permSettings (the spike's form), not "".
+- **Task 7:** 'exited' carries signal and stopped; graph.js marks done if stopped (stopping ≠ error) and 'started' carries role/cwd so the launched node shows its role (test graph RED→GREEN).
+- **Task 7:** POST /api/agents/:key/* on an already finished agent → 409 (the brief defined only 404 for unknown).
+- **Task 7:** claudeConfigDir() moved to paths.js and shared by install-hooks and roles.
+- **Task 7:** `npm test` = node --test "test/*.test.js"; fake-claude.mjs exits 0 if Centinela did not launch it (bare node --test picks it up too).
+- **Task 8:** createPermissions({broadcast, timeoutMs}) and request(agentKey, body, {signal}) — if Claude cuts the request (agent stopped), it is decided deny with reason 'cancelled' and the card disappears; not in the brief — test RED→GREEN (and reinforced: the mutation survived because the timeout also cleaned up).
+- **Task 8:** deny responds with the message "Rechazado desde Centinela." (the spike showed the model receives the message); decided carries reason 'timeout'|'cancelled' when the user does not decide.
+- **Task 8:** POST /api/permissions/:id with an invalid decision → 400; unknown or already decided → 404.
+- **Task 8:** the test with real `claude` is done in Task 10 from the UI (Task 9), with the user approving — do not approve a real agent's permissions via API on the user's behalf.
+- **Task 9:** a launched agent's conversation enters the graph (node.messages: user prompts as launch/event:'prompt' + 'assistant' text from the main thread, cap 200) — without this it was lost on page reload; the initial prompt is announced after 'started' because the node does not exist before — tests graph/launcher RED→GREEN.
+- **Task 9:** kind:'permission' records travel over SSE WITHOUT truncation — with the 2,000 cut a long command could hide its end on the card and the user would approve something not seen in full (a security risk) — test server RED→GREEN. Review Focus 1 still holds for hooks/stream.
+- **Task 9:** Pending carries agentKey and the card takes the role of the agent owning the launch-token (session_id only as a fallback) — test graph RED→GREEN.
+- **Task 9:** controls in public/control.js and helpers in public/dom.js (closed static list extended, test) — app.js would have passed 400 lines.
+- **Task 9:** the panel skeleton is built once per node (key id|launched) and each event only updates content — otherwise each SSE erased what the user was typing in the prompt.
+- **Task 9:** permission cards over the top-right corner of the GRAPH (same grid cell), not fixed over the page — they covered the panel's composer; the full-input <details> is open by default.
+- **Task 9:** ⌘/Ctrl+Enter sends the prompt; "Activar avisos" appears only if Notification.permission === 'default' (the browser requires a user gesture).
+- **Final:** state snapshot as the first SSE frame (accepting the reviewer's disagreement with the Task 4 shortcut) — removes the double-application window and the client's fetch/buffer; edges with an id by endpoints+label — test 'SSE starts with a snapshot' RED→GREEN.
+- **Final:** REJECTED the reviewer's proposal to always add 127.0.0.1 to the sandbox — the auditor shows that domain is what enables C1; it stays only with sandbox.enabled — cost if wrong: someone who enables the sandbox later silently loses observation.
+- **Final:** --setting-sources user is not applied (unverified whether it still resolves the project's .claude/agents); covered by the trust requirement + the mode check at init — cost if wrong: a trusted repo can bring its own hooks.

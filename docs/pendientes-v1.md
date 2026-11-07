@@ -1,32 +1,32 @@
-# Centinela v1 — pendientes
+# Centinela v1 — pending items
 
-Hallazgos menores de la revisión final y de la auditoría de seguridad (2026-10-22) que no se arreglaron en v1. Ninguno es crítico ni importante.
+Minor findings from the final review and the security audit (2026-10-22) that were not fixed in v1. None is critical or important.
 
-## Seguridad
+## Security
 
-- El launch-token de cada agente viaja dentro de `--settings` y se ve en `ps`. Quien lo lea puede forjar tarjetas de permiso de ese agente (no decidirlas). Arreglo: pasar `--settings` como archivo `0600`.
-- La tarjeta toma el nodo del `session_id` del cuerpo del hook; debería salir del agente dueño del launch-token.
-- `install-hooks` no escribe de forma atómica ni detecta cambios concurrentes de `settings.json`; un archivo nuevo queda con la máscara por defecto.
-- `isOurs` quita el grupo de hooks completo si uno de sus hooks es de Centinela (borraría un hook tuyo añadido a mano en ese grupo).
-- `roles.js` sigue enlaces simbólicos y FIFOs sin tope de tamaño (un repo hostil podría colgar el panel).
-- La CSP va como `<meta>`, así que no puede llevar `frame-ancestors`; mejor como cabecera HTTP. (Desde el rediseño ya no hay CDN: `script-src 'self'` y `base-uri 'none'`.)
+- Each agent's launch-token travels inside `--settings` and is visible in `ps`. Anyone who reads it can forge that agent's permission cards (not decide them). Fix: pass `--settings` as a `0600` file.
+- The card takes the node from the `session_id` in the hook body; it should come from the agent owning the launch-token.
+- `install-hooks` does not write atomically or detect concurrent changes to `settings.json`; a new file gets the default mask.
+- `isOurs` removes the whole hook group if one of its hooks is Centinela's (it would delete a hook of yours added by hand in that group).
+- `roles.js` follows symlinks and FIFOs with no size cap (a hostile repo could hang the dashboard).
+- The CSP is delivered as a `<meta>`, so it cannot carry `frame-ancestors`; better as an HTTP header. (Since the redesign there is no CDN: `script-src 'self'` and `base-uri 'none'`.)
 
-## Robustez
+## Robustness
 
-- SSE sin control de backpressure; varios cuerpos de 5 MB a la vez se guardan en memoria.
-- Un `Write` de ≥ ~2,5 MB supera el límite de `/hooks/event` (413) y su acción queda en "…"; `/api/state` no recorta y SSE sí.
-- Si el socket del hook se cierra mientras se lee el cuerpo, la petición espera los 300 s.
-- `append()` que falla (disco lleno) tumba el servidor.
-- Procesos nietos que heredan los pipes retrasan el `close`; `SIGTERM` no llega a los procesos que lanzó `claude`; `sendPrompt` entre la muerte y el `close` devuelve `true`.
-- `settings.json` válido pero que no es un objeto (o vacío) da un stack trace en el instalador.
+- SSE has no backpressure control; several 5 MB bodies at once are held in memory.
+- A `Write` of ≥ ~2.5 MB exceeds the `/hooks/event` limit (413) and its action stays at "…"; `/api/state` does not truncate and SSE does.
+- If the hook socket closes while the body is being read, the request waits the full 300 s.
+- An `append()` that fails (disk full) brings the server down.
+- Grandchild processes that inherit the pipes delay `close`; `SIGTERM` does not reach processes launched by `claude`; `sendPrompt` between death and `close` returns `true`.
+- A `settings.json` that is valid but not an object (or empty) gives a stack trace in the installer.
 
-## Interfaz
+## Interface
 
-- Eventos genéricos (`Notification`) quedan en "…" para siempre; `StopFailure` oculta el campo de prompt de un agente que sigue vivo.
-- `breadthfirst` con `fit` reinicia el pan y el zoom al llegar cada nodo nuevo; los carriles de la línea de tiempo pierden el foco del teclado cada 2 s; el `aria-live` del panel anuncia todo el panel en cada evento.
+- Generic events (`Notification`) stay at "…" forever; `StopFailure` hides the prompt field of an agent that is still alive.
+- `breadthfirst` with `fit` resets pan and zoom when each new node arrives; timeline lanes lose keyboard focus every 2 s; the panel's `aria-live` announces the whole panel on each event.
 
-## Sin verificar
+## Unverified
 
-- Si `--resume <id>` en `-p` conserva el mismo `session_id` (fusionaría el nodo de terminal con el lanzado).
-- Si `claude -p` emite `system/init` más de una vez con entrada en streaming (duplicaría el primer prompt en la conversación).
-- Si `--setting-sources user` sigue cargando los roles de `.claude/agents` del proyecto.
+- Whether `--resume <id>` in `-p` keeps the same `session_id` (it would merge the terminal node with the launched one).
+- Whether `claude -p` emits `system/init` more than once with streaming input (it would duplicate the first prompt in the conversation).
+- Whether `--setting-sources user` still loads the project's `.claude/agents` roles.

@@ -1,6 +1,6 @@
 ---
 name: Centinela
-description: Tablero local de terminales vivas para ver y dirigir sesiones de Claude Code.
+description: Local board of live terminals to watch and direct Claude Code sessions.
 colors:
   bg: "#0b0d0d"
   canvas: "#0d1010"
@@ -154,139 +154,139 @@ components:
 
 ## Overview
 
-**Creative North Star: "La sala de terminales vivas"**
+**Creative North Star: "The room of live terminals"**
 
-Centinela es un tablero oscuro donde cada agente es una terminal completa colocada sobre un lienzo de puntos, no un nodo de grafo con un panel aparte. Se lee de un vistazo desde un segundo monitor junto a un editor oscuro: lo que corre late en verde, lo que te espera arde en terracota, lo que falló se marca en rojo. Todo lo demás es casi-negro con tinte verde y queda en silencio.
+Centinela is a dark board where each agent is a complete terminal placed on a dotted canvas, not a graph node with a separate panel. It reads at a glance from a second monitor next to a dark editor: what is running pulses green, what is waiting on you burns terracotta, what failed is marked red. Everything else is green-tinted near-black and stays quiet.
 
-La densidad es de herramienta de operador: texto base de 13px, controles compactos, tres voces tipográficas con funciones fijas (versalitas serif para nombrar, monoespaciada para lo que la máquina dice y cuenta, sans del sistema para la interfaz). La profundidad se construye con capas tonales y bordes de 1px; la sombra está reservada para lo que flota o reclama atención. Funciona sin red ni dependencias: fuentes del sistema, iconos SVG de trazo único dibujados a mano, CSP `default-src 'self'`.
+The density is that of an operator's tool: 13px base text, compact controls, three type voices with fixed jobs (serif small caps to name, monospace for what the machine says and counts, system sans for the interface). Depth is built with tonal layers and 1px borders; shadow is reserved for what floats or demands attention. It works with no network or dependencies: system fonts, hand-drawn single-stroke SVG icons, CSP `default-src 'self'`.
 
-Es solo oscuro por decisión: vive al lado de un editor oscuro y no debe deslumbrar al mirarlo de reojo.
+It is dark only by decision: it lives next to a dark editor and must not dazzle when glanced at.
 
 **Key Characteristics:**
-- Lienzo casi-negro con retícula de puntos (18px) y tarjetas-terminal de 340px.
-- Un solo acento cálido con dos significados emparentados: "actúa aquí" y "esto te espera".
-- Estado codificado por color y por forma (punto, pastilla, arista animada), nunca solo por color.
-- Tres voces tipográficas con roles estrictos, todas del sistema.
-- Plano por defecto; sombra solo en la barra de comandos flotante y en la tarjeta que espera.
+- Near-black canvas with a dot grid (18px) and 340px terminal cards.
+- A single warm accent with two related meanings: "act here" and "this is waiting on you".
+- State encoded by color and by shape (dot, pill, animated edge), never by color alone.
+- Three type voices with strict roles, all from the system.
+- Flat by default; shadow only on the floating command bar and the waiting card.
 
 ## Colors
 
-Neutros casi-negros con un tinte verde azulado muy bajo (croma ≤ 0.02), un acento terracota y dos colores de estado.
+Near-black neutrals with a very low blue-green tint (chroma ≤ 0.02), a terracotta accent and two status colors.
 
 ### Primary
-- **Terracota de Turno** (accent): la acción primaria (Nuevo agente, Lanzar, Permitir, Enviar), el foco de teclado, el cursor de texto, la vista activa de la navegación y, sobre todo, cualquier agente que espera al usuario (borde y halo de su tarjeta, pastilla "Espera permiso", contador "Te esperan", arista punteada). Su hover es **Terracota Encendida** (accent-hover). Sobre el acento sólido, el texto es **Tinta de Barro** (accent-ink).
-- **Velo Terracota** (accent-soft): fondo de la pastilla de espera, del contador activo y de la selección de texto.
+- **Your-Turn Terracotta** (accent): the primary action (Nuevo agente, Lanzar, Permitir, Enviar), keyboard focus, the text cursor, the active navigation view and, above all, any agent waiting on the user (its card's border and halo, "Espera permiso" pill, "Te esperan" counter, dotted edge). Its hover is **Lit Terracotta** (accent-hover). On the solid accent, text is **Clay Ink** (accent-ink).
+- **Terracotta Veil** (accent-soft): background of the waiting pill, the active counter and text selection.
 
 ### Secondary
-- **Verde Pulso** (live): lo que está trabajando ahora: punto de conexión "En vivo", pastilla "Trabajando", arista animada, resultado correcto en la terminal, cifra de agentes trabajando. Con **Velo Verde** (live-soft) como fondo de pastillas y chips.
+- **Pulse Green** (live): what is working right now: "En vivo" connection dot, "Trabajando" pill, animated edge, successful result in the terminal, working-agents figure. With **Green Veil** (live-soft) as the background of pills and chips.
 
 ### Tertiary
-- **Rojo Falla** (danger): error, desconexión, resultado fallido, acciones destructivas (Detener, Rechazar). Con **Velo Rojo** (danger-soft) en hover y pastillas.
+- **Failure Red** (danger): error, disconnection, failed result, destructive actions (Detener, Rechazar). With **Red Veil** (danger-soft) on hover and pills.
 
 ### Neutral
-- **Fondo Abisal** (bg): fondo de la página.
-- **Lienzo** (canvas): superficie del lienzo y de la línea de tiempo; los puntos de la retícula usan **Punto de Retícula** (dot).
-- **Costado** (side): barra lateral y cajón de detalle.
-- **Superficie** (surface): tarjetas, botones, contadores, diálogo.
-- **Superficie Alzada** (surface-2): hover, pestaña seleccionada, mensaje del usuario, ícono de tarjeta.
-- **Pozo** (well): campos de texto y el bloque de terminal dentro de la tarjeta; es más oscuro que la superficie, se lee como hundido.
-- **Borde** (border) y **Borde Firme** (border-strong): divisores de 1px y bordes en reposo / en hover, seleccionados y flotantes.
-- **Tinta** (text), **Tinta Apagada** (muted) y **Tinta Tenue** (faint): texto principal, etiquetas y texto secundario, marcas de tiempo y placeholders.
+- **Abyssal Background** (bg): the page background.
+- **Canvas** (canvas): surface of the canvas and the timeline; grid dots use **Grid Dot** (dot).
+- **Side** (side): sidebar and detail drawer.
+- **Surface** (surface): cards, buttons, counters, dialog.
+- **Raised Surface** (surface-2): hover, selected tab, user message, card icon.
+- **Well** (well): text fields and the terminal block inside the card; darker than the surface, it reads as sunken.
+- **Border** (border) and **Firm Border** (border-strong): 1px dividers and borders at rest / on hover, selected and floating.
+- **Ink** (text), **Muted Ink** (muted) and **Faint Ink** (faint): main text, labels and secondary text, timestamps and placeholders.
 
 ### Named Rules
-**The Quién-Te-Espera Rule.** La terracota significa "tu turno": acción primaria o agente esperando. No se usa como decoración, ni para marcar novedad, ni para estados que no requieren al usuario.
+**The Who's-Waiting Rule.** Terracotta means "your turn": primary action or waiting agent. It is not used as decoration, to mark something new, or for states that do not require the user.
 
-**The Tres Estados Rule.** Verde = trabajando, terracota = esperando, rojo = falló. Ningún otro color porta estado, y cada estado se repite en punto, pastilla, borde e ícono para no depender solo del matiz.
+**The Three States Rule.** Green = working, terracotta = waiting, red = failed. No other color carries state, and each state is repeated in dot, pill, border and icon so it does not depend on hue alone.
 
 ## Typography
 
-**Display/Label Font:** serif del sistema en versalitas (`ui-serif`, New York, Iowan Old Style, Georgia)
-**Body Font:** sans del sistema (`-apple-system`, SF Pro Text, system-ui)
-**Label/Mono Font:** monoespaciada del sistema (`ui-monospace`, SF Mono, Menlo)
+**Display/Label Font:** system serif in small caps (`ui-serif`, New York, Iowan Old Style, Georgia)
+**Body Font:** system sans (`-apple-system`, SF Pro Text, system-ui)
+**Label/Mono Font:** system monospace (`ui-monospace`, SF Mono, Menlo)
 
-**Character:** versalitas serif con tracking abierto para nombrar cosas (agentes, contadores, secciones) como en una placa de instrumento; monoespaciada para todo lo que sale de la máquina; sans neutra para la interfaz. Sin fuentes descargadas: funciona sin red bajo la CSP.
+**Character:** serif small caps with open tracking to name things (agents, counters, sections) like an instrument plate; monospace for everything coming from the machine; neutral sans for the interface. No downloaded fonts: it works offline under the CSP.
 
 ### Hierarchy
-- **Headline** (400, 22px, versalitas, +0.06em): nombre del agente en el cajón y título del diálogo.
-- **Title** (600, 17px, sans): el nombre "Centinela" en la barra superior.
-- **Card title** (400, 16px/1.15, versalitas, +0.06em): nombre del agente en la tarjeta; en la línea de tiempo, 15px.
-- **Body** (400, 13px/1.45, sans): interfaz general, botones, campos, mensajes.
-- **Label** (400, 13–15px, versalitas, +0.06–0.1em, color muted): etiquetas de contadores, hechos del cajón, pastillas de estado, encabezados de sección, marca.
-- **Mono** (12px/1.5): salida de la terminal, "ahora" de la tarjeta, resumen del permiso; **Mono small** (11–11.5px): pies de tarjeta, marcas de tiempo, chip "Local", aristas, versión. Cifras siempre con `tabular-nums`.
+- **Headline** (400, 22px, small caps, +0.06em): agent name in the drawer and dialog title.
+- **Title** (600, 17px, sans): the name "Centinela" in the top bar.
+- **Card title** (400, 16px/1.15, small caps, +0.06em): agent name on the card; 15px on the timeline.
+- **Body** (400, 13px/1.45, sans): general interface, buttons, fields, messages.
+- **Label** (400, 13–15px, small caps, +0.06–0.1em, muted color): counter labels, drawer facts, status pills, section headers, brand.
+- **Mono** (12px/1.5): terminal output, the card's "now" line, permission summary; **Mono small** (11–11.5px): card footers, timestamps, "Local" chip, edges, version. Figures always with `tabular-nums`.
 
 ### Named Rules
-**The Tres Voces Rule.** Versalitas serif nombra, mono reporta, sans opera. Una cifra o un comando nunca va en serif; un nombre de agente nunca va en mono.
+**The Three Voices Rule.** Serif small caps names, mono reports, sans operates. A figure or a command never goes in serif; an agent name never goes in mono.
 
 ## Layout
 
-Rejilla de app a pantalla completa, de escritorio: barra lateral fija de 228px + área principal. El área principal apila barra superior (marca, chip local, contadores a la derecha), barra de herramientas (pestañas por proyecto, filtro, zoom, Nuevo agente) y el escenario. El escenario superpone lienzo / línea de tiempo y la barra de comandos flotante (centrada abajo, hasta 780px, 18px sobre el borde), con el cajón de detalle de 400px a la derecha cuando hay selección.
+Full-screen desktop app grid: fixed 228px sidebar + main area. The main area stacks the top bar (brand, local chip, counters on the right), the toolbar (project tabs, filter, zoom, Nuevo agente) and the stage. The stage overlays the canvas / timeline and the floating command bar (centered at the bottom, up to 780px, 18px above the edge), with the 400px detail drawer on the right when there is a selection.
 
-El lienzo es infinito, con pan y zoom; las tarjetas tienen ancho fijo y se colocan por relayout animado. Ritmo de espaciado: 4 / 8 / 12 / 20 / 28px, con pasos intermedios de 6, 10 y 14px dentro de controles. Por debajo de 1100px la barra lateral colapsa a 60px de solo íconos y el cajón baja a 360px. El uso móvil está fuera de alcance por ahora; la regla de 760px existe en el CSS pero no es una plataforma soportada.
+The canvas is infinite, with pan and zoom; cards have a fixed width and are placed by animated relayout. Spacing rhythm: 4 / 8 / 12 / 20 / 28px, with intermediate steps of 6, 10 and 14px inside controls. Below 1100px the sidebar collapses to 60px icons only and the drawer drops to 360px. Mobile use is out of scope for now; the 760px rule exists in the CSS but is not a supported platform.
 
 ## Elevation & Depth
 
-Sistema plano con capas tonales: el fondo más oscuro está detrás, las superficies suben medio escalón de luminosidad, los pozos (campos, terminal) bajan. Todo borde es de 1px. La sombra es neutra (negro con alfa), nunca de color, y solo aparece en dos lugares: lo que flota sobre el lienzo y lo que reclama al usuario.
+Flat system with tonal layers: the darkest background is behind, surfaces rise half a lightness step, wells (fields, terminal) go down. Every border is 1px. Shadow is neutral (black with alpha), never colored, and appears in only two places: what floats over the canvas and what demands the user.
 
 ### Shadow Vocabulary
-- **Flotante** (`box-shadow: 0 18px 40px rgb(0 0 0 / 0.45)`): barra de comandos.
-- **Te espera** (`box-shadow: 0 0 0 1px var(--accent), 0 12px 28px rgb(0 0 0 / 0.5)`): tarjeta en estado de espera; doble borde terracota más elevación.
+- **Floating** (`box-shadow: 0 18px 40px rgb(0 0 0 / 0.45)`): command bar.
+- **Waiting on you** (`box-shadow: 0 0 0 1px var(--accent), 0 12px 28px rgb(0 0 0 / 0.5)`): card in waiting state; double terracotta border plus elevation.
 
 ### Named Rules
-**The Plano-Salvo-Turno Rule.** Las superficies son planas en reposo. Una tarjeta solo se eleva cuando espera al usuario; ningún hover ni selección añade sombra (la selección usa un contorno terracota de 2px separado 3px).
+**The Flat-Except-Your-Turn Rule.** Surfaces are flat at rest. A card rises only when it is waiting on the user; no hover or selection adds shadow (selection uses a 2px terracotta outline offset by 3px).
 
 ## Shapes
 
-Esquinas suaves y consistentes: 8px para controles (botones, campos, íconos de tarjeta, conexión), 10px para contenedores (tarjetas, contadores, hechos), 14px para lo flotante (barra de comandos, diálogo), 999px para pastillas, chips y etiquetas de arista; 3–6px solo en piezas pequeñas (pista de la línea de tiempo, `kbd`, bloques `pre`). Los puntos de estado son círculos de 6–8px. Las aristas entre agentes son curvas punteadas (trazo 1.5, guion 4/5). Iconos: SVG de 24×24 con trazo único de 1.75, `currentColor`, mostrados a 16px.
+Soft, consistent corners: 8px for controls (buttons, fields, card icons, connection), 10px for containers (cards, counters, facts), 14px for floating elements (command bar, dialog), 999px for pills, chips and edge labels; 3–6px only on small pieces (timeline track, `kbd`, `pre` blocks). Status dots are 6–8px circles. Edges between agents are dotted curves (stroke 1.5, dash 4/5). Icons: 24×24 SVG with a single 1.75 stroke, `currentColor`, shown at 16px.
 
 ## Components
 
 ### Buttons
-Compactos y tranquilos; el color aparece solo cuando la acción importa.
-- **Shape:** esquinas suaves (8px), borde de 1px.
-- **Default:** superficie con borde; hover sube a superficie alzada y borde firme. Transición de 0.15s en fondo, borde y color.
-- **Primary:** terracota sólida con tinta de barro, peso 600; hover a terracota encendida.
-- **Ghost:** transparente, texto apagado; hover toma superficie y borde.
-- **Danger:** texto y borde rojo translúcido sobre transparente; hover con velo rojo. Variante **danger-text** (Detener todos): apagada hasta hover o "armada" (confirmación en dos pasos).
-- **Icon button:** relleno de 6px.
-- **Focus:** contorno terracota de 2px, separación 2px. Deshabilitado: opacidad 0.45.
+Compact and calm; color appears only when the action matters.
+- **Shape:** soft corners (8px), 1px border.
+- **Default:** surface with border; hover rises to raised surface and firm border. 0.15s transition on background, border and color.
+- **Primary:** solid terracotta with clay ink, weight 600; hover to lit terracotta.
+- **Ghost:** transparent, muted text; hover takes surface and border.
+- **Danger:** red text and translucent red border on transparent; hover with red veil. **danger-text** variant (Detener todos): muted until hover or "armed" (two-step confirmation).
+- **Icon button:** 6px padding.
+- **Focus:** 2px terracotta outline, 2px offset. Disabled: 0.45 opacity.
 
-### Chips (pastillas de estado)
-- **Style:** versalitas serif 13px, pastilla de 999px, borde de 1px; trabajando (verde, con punto antepuesto), esperando (terracota), error (rojo), desconectado (borde punteado, tinta tenue).
-- **Chip "Local":** mono 11.5px sobre velo verde.
+### Chips (status pills)
+- **Style:** 13px serif small caps, 999px pill, 1px border; working (green, with a leading dot), waiting (terracotta), error (red), disconnected (dotted border, faint ink).
+- **"Local" chip:** 11.5px mono on green veil.
 
 ### Cards / Containers
-La tarjeta-terminal es la pieza firma (ver abajo). Los contenedores secundarios (contadores, hechos del cajón, mensajes) usan superficie, borde de 1px y 8–10px de radio, sin sombra.
+The terminal card is the signature piece (see below). Secondary containers (counters, drawer facts, messages) use surface, 1px border and 8–10px radius, without shadow.
 
 ### Inputs / Fields
-- **Style:** pozo con borde de 1px, 8px de radio, relleno 7px 10px.
-- **Focus:** el borde pasa a firme y, con teclado, contorno terracota de 2px.
-- **Error:** texto en rojo falla bajo el formulario.
+- **Style:** well with 1px border, 8px radius, 7px 10px padding.
+- **Focus:** the border turns firm and, with the keyboard, a 2px terracotta outline.
+- **Error:** failure-red text below the form.
 
 ### Navigation
-Barra lateral con marca en versalitas ("Centinela // panel" con punto terracota), encabezado de sección en versalitas y elementos de 13.5px con ícono. Activo: texto terracota sobre superficie alzada con borde firme. Pie con estado de conexión en mono dentro de un pozo (punto verde "En vivo", rojo si cae). Pestañas por proyecto en serif 14px con punto de estado; la seleccionada sube a superficie alzada.
+Sidebar with small-caps brand ("Centinela // panel" with a terracotta dot), small-caps section header and 13.5px items with an icon. Active: terracotta text on raised surface with firm border. Footer with connection status in mono inside a well (green "En vivo" dot, red if it drops). Project tabs in 14px serif with a status dot; the selected one rises to raised surface.
 
-### Tarjeta de agente (signature)
-Terminal completa de 340px: cabecera (ícono en caja de 30px coloreado por estado, nombre en versalitas, tipo en sans 12px, pastilla de estado), línea "ahora" en mono, bloque de terminal hundido con marcas ✓ / ✗ / spinner por acción y hora tabular, último mensaje del agente (3 líneas), ranura de permiso y pie mono con acciones, costo y hora. En espera, el borde, el halo y la ranura de permiso (fondo terracota al 6%) la hacen la única cosa cálida en pantalla; los botones Permitir / Permitir en la sesión / Rechazar viven dentro de la tarjeta. Terminada o desconectada, el fondo baja a casi-negro y desaparece la línea "ahora".
+### Agent card (signature)
+A complete 340px terminal: header (icon in a 30px box colored by state, name in small caps, type in 12px sans, status pill), "now" line in mono, sunken terminal block with ✓ / ✗ / spinner marks per action and tabular time, agent's last message (3 lines), permission slot and mono footer with actions, cost and time. While waiting, the border, halo and permission slot (6% terracotta background) make it the only warm thing on screen; the Permitir / Permitir en la sesión / Rechazar buttons live inside the card. Finished or disconnected, the background drops to near-black and the "now" line disappears.
 
-### Barra de comandos (signature)
-Flotante, centrada abajo, 14px de radio, borde firme y sombra flotante. Una fila: destinatario, campo que crece con el contenido, atajo `⌘↩` en `kbd`, Enviar (primario de solo ícono) y Detener todos (danger-text).
+### Command bar (signature)
+Floating, centered at the bottom, 14px radius, firm border and floating shadow. One row: recipient, field that grows with its content, `⌘↩` shortcut in `kbd`, Enviar (icon-only primary) and Detener todos (danger-text).
 
-### Movimiento
-Relayout de tarjetas (transform 0.24s, `cubic-bezier(0.2, 0.8, 0.2, 1)`), guiones que fluyen en las aristas de agentes trabajando (1.1s lineal), spinner en acciones en curso (1s). Todo se apaga con `prefers-reduced-motion`.
+### Motion
+Card relayout (transform 0.24s, `cubic-bezier(0.2, 0.8, 0.2, 1)`), dashes flowing on the edges of working agents (1.1s linear), spinner on actions in progress (1s). Everything turns off with `prefers-reduced-motion`.
 
 ## Do's and Don'ts
 
 ### Do:
-- **Do** reservar la terracota para la acción primaria y para el agente que espera (The Quién-Te-Espera Rule).
-- **Do** repetir cada estado en punto, pastilla, borde e ícono, con verde / terracota / rojo y nada más.
-- **Do** usar versalitas serif para nombres y etiquetas, mono con `tabular-nums` para salida y cifras, sans del sistema para la interfaz.
-- **Do** construir profundidad con capas tonales y bordes de 1px; sombra solo en la barra de comandos y en la tarjeta que espera.
-- **Do** dibujar iconos nuevos como SVG de trazo único (24×24, trazo 1.75, `currentColor`) en `icons.js`.
-- **Do** apagar toda animación bajo `prefers-reduced-motion`.
+- **Do** reserve terracotta for the primary action and the waiting agent (The Who's-Waiting Rule).
+- **Do** repeat each state in dot, pill, border and icon, with green / terracotta / red and nothing else.
+- **Do** use serif small caps for names and labels, mono with `tabular-nums` for output and figures, system sans for the interface.
+- **Do** build depth with tonal layers and 1px borders; shadow only on the command bar and the waiting card.
+- **Do** draw new icons as single-stroke SVG (24×24, stroke 1.75, `currentColor`) in `icons.js`.
+- **Do** turn off all animation under `prefers-reduced-motion`.
 
 ### Don't:
-- **Don't** añadir fuentes web, CDNs ni recursos externos: rompen la CSP `default-src 'self'` y el uso sin red.
-- **Don't** añadir un tema claro: el producto vive junto a un editor oscuro.
-- **Don't** usar sombras de color ni elevar tarjetas en hover o selección.
-- **Don't** convertir los agentes en nodos de grafo con un panel de detalles aparte; cada agente se lee completo en su tarjeta.
-- **Don't** mostrar métricas que Centinela no mide (cuotas, latencias, ramas por agente).
+- **Don't** add web fonts, CDNs or external resources: they break the `default-src 'self'` CSP and offline use.
+- **Don't** add a light theme: the product lives next to a dark editor.
+- **Don't** use colored shadows or raise cards on hover or selection.
+- **Don't** turn agents into graph nodes with a separate details panel; each agent reads completely on its card.
+- **Don't** show metrics Centinela does not measure (quotas, latencies, branches per agent).
