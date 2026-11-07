@@ -23,6 +23,7 @@ const STATIC = {
   '/cards.js': ['public/cards.js', 'text/javascript; charset=utf-8'],
   '/icons.js': ['public/icons.js', 'text/javascript; charset=utf-8'],
   '/style.css': ['public/style.css', 'text/css; charset=utf-8'],
+  '/favicon.svg': ['public/favicon.svg', 'image/svg+xml'],
   '/shared/graph.js': ['src/shared/graph.js', 'text/javascript; charset=utf-8'],
   '/shared/models.js': ['src/shared/models.js', 'text/javascript; charset=utf-8'],
 };
@@ -179,6 +180,7 @@ export function createServer({ port, uiToken, hookToken, claudeBin, pairCode }) 
       }
       const body = await readJson(req, res);
       if (body === undefined) return;
+      if (!validHookBody(body)) return send(res, 400);
       const ac = new AbortController();
       res.on('close', () => !res.writableFinished && ac.abort());
       const { decision, message } = await permissions.request(agentKey, body, { signal: ac.signal });
@@ -234,7 +236,7 @@ export function createServer({ port, uiToken, hookToken, claudeBin, pairCode }) 
       if (!res.headersSent) send(res, 500);
     });
   });
-  const launcher = createLauncher({ claudeBin, port: () => server.address().port, broadcast });
+  const launcher = createLauncher({ claudeBin, port: () => server.address().port, hookToken, broadcast });
   const nodeOf = (sessionId, agentId) => state.nodes[nodeId(sessionId, agentId)];
   const permissions = createPermissions({
     broadcast,

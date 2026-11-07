@@ -4,7 +4,9 @@ Minor findings from the final review and the security audit (2026-10-22) that we
 
 ## Security
 
-- Each agent's launch-token travels inside `--settings` and is visible in `ps`. Anyone who reads it can forge that agent's permission cards (not decide them). Fix: pass `--settings` as a `0600` file.
+- Each agent's launch-token and the hook-token travel inside `--settings` and are visible in `ps`. Anyone who reads them can forge that agent's permission cards or send events (not decide permissions). Fix: pass `--settings` as a `0600` file.
+- A trusted project can still skip the panel with `permissions.allow`, with plugins from its `enabledPlugins` that bring hooks, or with hooks in the frontmatter of a role in `.claude/agents`. Only `hooks.PermissionRequest` and `hooks.PreToolUse` in its settings are refused. Hooks in a project skill's frontmatter were not tested, and the refusal is only checked at launch.
+- `env` from the user's settings has no allowlist (only `CLAUDE_CODE_EXPERIMENTAL_AGENT_TEAMS` is removed); `apiKeyHelper` and `awsAuthRefresh` are not inherited, so a user who authenticates through them cannot launch agents.
 - The card takes the node from the `session_id` in the hook body; it should come from the agent owning the launch-token.
 - `install-hooks` does not write atomically or detect concurrent changes to `settings.json`; a new file gets the default mask.
 - `isOurs` removes the whole hook group if one of its hooks is Centinela's (it would delete a hook of yours added by hand in that group).
@@ -25,8 +27,8 @@ Minor findings from the final review and the security audit (2026-10-22) that we
 - Generic events (`Notification`) stay at "…" forever; `StopFailure` hides the prompt field of an agent that is still alive.
 - `breadthfirst` with `fit` resets pan and zoom when each new node arrives; timeline lanes lose keyboard focus every 2 s; the panel's `aria-live` announces the whole panel on each event.
 
-## Unverified
+## Verified with the real CLI (2026-11-07)
 
-- Whether `--resume <id>` in `-p` keeps the same `session_id` (it would merge the terminal node with the launched one).
-- Whether `claude -p` emits `system/init` more than once with streaming input (it would duplicate the first prompt in the conversation).
-- Whether `--setting-sources user` still loads the project's `.claude/agents` roles.
+- `--resume <id>` in `-p` keeps the same `session_id`: the terminal node and the launched one merge.
+- `claude -p` emits `system/init` on every turn with streaming input: the first prompt is now announced only once.
+- `--setting-sources project,local` still loads the project's `.claude/agents` roles but not the user's, which now travel in `--agents`.

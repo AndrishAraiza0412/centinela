@@ -11,7 +11,7 @@
 - **See what agents do:** every session and subagent is a live card with its status, recent actions and delegations.
 - **Decide what they may do:** launched agents ask before acting. Each request shows the full input, with invisible characters flagged, and is denied if nobody answers.
 - **Fail closed:** no answer in 5 minutes, or Centinela switched off, means the request is rejected.
-- **Local and dependency-free:** Node ≥ 22, no packages, no CDN, works offline. Listens only on `127.0.0.1:4317`. 108 automated tests.
+- **Local and dependency-free:** Node ≥ 22, no packages, no CDN, works offline. Listens only on `127.0.0.1:4317`. 127 automated tests.
 
 ## Getting started
 
@@ -48,7 +48,7 @@ node bin/centinela-hooks.js uninstall   # removes only what Centinela added
 
 "Nuevo agente" runs `claude -p --agent <role>` in the folder you choose, with the model you choose: your configured one, the latest of each family or a specific version (the list is in `src/shared/models.js`).
 
-**Team** (dialog checkbox, on by default): the agent gets the other roles as subagents and instructions to split independent parts in parallel, have a different role review each result, send failures back for correction (up to 3 rounds) and keep coordinating when you ask for more. Subagents cannot delegate further: the coordinator assigns the work. Their permissions go through the dashboard just like the agent's; to see each subagent as a card, install the observation hooks.
+**Team** (dialog checkbox, on by default): the agent gets the other roles as subagents and instructions to split independent parts in parallel, have a different role review each result, send failures back for correction (up to 3 rounds) and keep coordinating when you ask for more. Subagents cannot delegate further: the coordinator assigns the work. Their permissions go through the dashboard just like the agent's, and each subagent gets its own card.
 
 - **Launching a subagent asks for permission** (in every launched agent, with or without a team): the card says which role, what for and the full assignment.
 - **Two agents, one file:** if an agent wants to change a file that another still-active agent already changed (or is asking to change), Centinela does not ask you yet. It returns the other agent's change so the agent can reread the file and integrate both, or explain the conflict to the coordinator. The second attempt reaches you as a normal card, marked "Otro agente también cambia este archivo" (Another agent is also changing this file), with the other change to compare. The agent's card records a "Revisión" (Review) action.
@@ -56,16 +56,17 @@ node bin/centinela-hooks.js uninstall   # removes only what Centinela added
 Roles come from:
 
 - Centinela's `roles/*.md` (built in): developer, architect, legal, designer, QA, security, DevOps, documentation, product and data. They are passed with `--agents` at launch and do not touch your configuration. If you or the project have a role with the same name, that one is used.
-- Your Claude Code agents folder (`agents/*.md`) and the project's `.claude/agents/*.md`.
+- Your Claude Code agents folder (`agents/*.md`), passed the same way, and the project's `.claude/agents/*.md`.
 
 How they run:
 
+- **Only the dashboard decides.** Claude Code runs every `PermissionRequest` hook in parallel and takes the first answer, so another approval tool could allow an action while its card is still waiting (reproduced with the real CLI). Launched agents therefore run with `--setting-sources project,local`: your user hooks, plugins and `allow` rules are not loaded. They inherit only your `env`, `model`, `sandbox` and `ask`/`deny` rules, plus Centinela's own observation hooks. A project whose settings define a `PermissionRequest` or `PreToolUse` hook, or cannot be read, is refused even if you trust the folder. MCP servers defined in your `settings.json` are not inherited.
 - They use the `default` permission mode (if `claude` reports another mode at startup, Centinela stops it). Each permission appears as a card with the full input, and invisible characters or space padding are flagged. Allow / Allow this same action for the session (same tool, same agent and exactly the same input) / Reject.
 - All Bash goes through the dashboard, including commands that would run inside the sandbox (in your terminal sessions Claude Code auto-approves those; in launched agents this is turned off with `autoAllowBashIfSandboxed: false`).
 - `claude -p` skips the folder trust dialog: if the folder has `.claude/settings*.json` or `.mcp.json`, the dashboard asks you to confirm before launching.
 - A project role with the same name as one of yours cannot be launched there (you would not know which one runs).
 - No answer in 5 minutes → rejected. Centinela off → rejected (`onFailure: block`).
-- "Continuar aquí" (Continue here), on a terminal session, resumes it with `--resume` on a new branch; the terminal's session does not change.
+- "Continuar aquí" (Continue here), on a terminal session, resumes it with `--resume`. The session id stays the same, so its card becomes the launched agent.
 
 ## Data and tokens
 

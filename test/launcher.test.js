@@ -2,7 +2,7 @@ import { test, before, after } from 'node:test';
 import assert from 'node:assert/strict';
 import http from 'node:http';
 import { once } from 'node:events';
-import { mkdtempSync, mkdirSync, writeFileSync, chmodSync } from 'node:fs';
+import { mkdtempSync, mkdirSync, writeFileSync, chmodSync, rmSync } from 'node:fs';
 import { tmpdir } from 'node:os';
 import { join } from 'node:path';
 import { fileURLToPath } from 'node:url';
@@ -54,7 +54,7 @@ async function waitFor(fn, ms = 3000) {
 
 function harness() {
   const recs = [];
-  const launcher = createLauncher({ claudeBin: FAKE, port: () => 4317, broadcast: (r) => recs.push(r) });
+  const launcher = createLauncher({ claudeBin: FAKE, port: () => 4317, hookToken: 'h'.repeat(64), broadcast: (r) => recs.push(r) });
   const of = (key, pred) => recs.filter((r) => r.agentKey === key && pred(r));
   return { recs, launcher, of };
 }
@@ -230,7 +230,9 @@ test('team mode inlines every built-in role and asks the agent to delegate and c
   assert.equal(argv[argv.indexOf('--model') + 1], 'claude-sonnet-5');
   const agents = Object.keys(JSON.parse(argv[argv.indexOf('--agents') + 1]));
   assert.ok(agents.includes('legal') && agents.includes('desarrollador'));
-  assert.ok(!agents.includes('qa'), 'a user role with a built-in name is not overridden');
+  const inlined = JSON.parse(argv[argv.indexOf('--agents') + 1]);
+  assert.equal(inlined.qa.description, 'Mi QA', 'user settings are not loaded, so user roles travel inline and win over a built-in');
+  assert.ok(!agents.includes('auditor') && !agents.includes('tester'), 'neither a conflicting role nor a project role');
   const system = argv[argv.indexOf('--append-system-prompt') + 1];
   assert.match(system, /paralelo/);
   assert.match(system, /\bqa\b/, 'the user role is offered too');
@@ -257,6 +259,153 @@ test('I1: a folder with project settings or MCP servers needs explicit trust', a
   const ok = await api('POST', '/api/agents', { role: 'tester', cwd: untrusted, prompt: 'hola', trustProject: true });
   assert.equal(ok.status, 200);
   await api('POST', `/api/agents/${ok.body.agentKey}/stop`);
+});
+
+const initOf = (recs, agentKey) => waitFor(() => recs.find((r) => r.agentKey === agentKey && r.kind === 'stream' && r.body.subtype === 'init'));
+
+test('only Centinela decides: user hooks are not loaded and the safe user settings are carried over', async () => {
+  const file = join(tmp, 'config/settings.json');
+  writeFileSync(file, JSON.stringify({
+    model: 'sonnet',
+    env: { CENTINELA_TEST_USER_ENV: 'de-usuario', CLAUDE_CODE_EXPERIMENTAL_AGENT_TEAMS: '1', ROTA: 5 },
+    hooks: { PermissionRequest: [{ hooks: [{ type: 'command', command: 'aprueba-todo' }] }] },
+    enabledPlugins: { x: true },
+    permissions: { defaultMode: 'auto', allow: ['Write'], ask: ['Bash(git *)'], deny: ['Read(.env)'] },
+    sandbox: { enabled: true, autoAllowBashIfSandboxed: true, network: { allowedDomains: ['example.com'] } },
+  }));
+  try {
+    const { recs, launcher } = harness();
+    const { agentKey } = launcher.launch({ role: 'tester', cwd: project, prompt: 'hola' });
+    const { body: init } = await initOf(recs, agentKey);
+    assert.equal(init.argv[init.argv.indexOf('--setting-sources') + 1], 'project,local');
+    assert.equal(init.userEnv, 'de-usuario');
+    assert.equal(init.agentTeams, undefined, 'teammates are separate processes the panel may not gate');
+    const settings = JSON.parse(init.argv[init.argv.indexOf('--settings') + 1]);
+    assert.deepEqual(settings.hooks.PermissionRequest.flatMap((g) => g.hooks.map((h) => h.url)), ['http://127.0.0.1:4317/hooks/permission']);
+    assert.equal(settings.hooks.PostToolUse[0].hooks[0].url, 'http://127.0.0.1:4317/hooks/event', 'actions are observed without installing anything');
+    assert.equal(settings.model, 'sonnet');
+    assert.deepEqual(settings.permissions, { ask: ['Agent', 'Bash(git *)'], deny: ['Read(.env)'] }, 'neither allow rules nor another mode skip the panel');
+    assert.equal(settings.sandbox.enabled, true);
+    assert.equal(settings.sandbox.autoAllowBashIfSandboxed, false);
+    assert.deepEqual(settings.sandbox.network.allowedDomains, ['example.com', '127.0.0.1:4317']);
+    assert.equal(settings.enabledPlugins, undefined);
+    launcher.stop(agentKey);
+  } finally {
+    rmSync(file);
+  }
+});
+
+for (const [name, front, expected] of [
+  ['inline', 'tools: Read, Grep\nmodel: haiku # rápido', { tools: ['Read', 'Grep'], model: 'haiku' }],
+  ['a quoted list', 'tools: ["Read", \'Grep\']', { tools: ['Read', 'Grep'] }],
+  ['a block list', 'tools:\n  - Read\n  - Grep\nmodel: haiku', { tools: ['Read', 'Grep'], model: 'haiku' }],
+  ['disallowedTools', 'disallowedTools: Write, Edit', { disallowedTools: ['Write', 'Edit'] }],
+]) {
+  test(`a user role travels inline with its restrictions: ${name}`, async () => {
+    const file = join(tmp, 'config/agents/lector.md');
+    writeFileSync(file, `---\nname: lector\ndescription: Lee\n${front}\n---\nEres un lector.\n`);
+    try {
+      const { recs, launcher } = harness();
+      const { agentKey } = launcher.launch({ role: 'lector', cwd: project, prompt: 'hola' });
+      const { body: init } = await initOf(recs, agentKey);
+      assert.deepEqual(JSON.parse(init.argv[init.argv.indexOf('--agents') + 1]), {
+        lector: { description: 'Lee', prompt: 'Eres un lector.', ...expected },
+      });
+      assert.ok(listRoles(project).every((r) => r.tools === undefined && r.model === undefined), 'the role list stays name and description');
+      launcher.stop(agentKey);
+    } finally {
+      rmSync(file);
+    }
+  });
+}
+
+test('a block description is read whole', () => {
+  const file = join(tmp, 'config/agents/largo.md');
+  writeFileSync(file, '---\nname: largo\ndescription: >\n  Primera línea\n  segunda línea\nmodel: haiku\n---\nx\n');
+  try {
+    assert.equal(listRoles(project).find((r) => r.name === 'largo').description, 'Primera línea segunda línea');
+  } finally {
+    rmSync(file);
+  }
+});
+
+for (const [name, text] of [
+  ['unreadable JSON', '{ no es json'],
+  ['a value that is not an object', '[]'],
+]) {
+  test(`user settings with ${name} refuse the launch instead of dropping deny rules`, async () => {
+    const file = join(tmp, 'config/settings.json');
+    writeFileSync(file, text);
+    try {
+      const r = await api('POST', '/api/agents', { role: 'tester', cwd: project, prompt: 'hola' });
+      assert.equal(r.status, 400);
+      assert.match(r.body.error, /deny/);
+    } finally {
+      rmSync(file);
+    }
+  });
+}
+
+test('malformed user settings values are ignored, never a crash', async () => {
+  const file = join(tmp, 'config/settings.json');
+  writeFileSync(file, JSON.stringify({ model: 5, env: 'x', permissions: { ask: 'Bash', deny: 7 }, sandbox: { network: { allowedDomains: 7 } } }));
+  try {
+    const { recs, launcher } = harness();
+    const { agentKey } = launcher.launch({ role: 'tester', cwd: project, prompt: 'hola' });
+    const { body: init } = await initOf(recs, agentKey);
+    const settings = JSON.parse(init.argv[init.argv.indexOf('--settings') + 1]);
+    assert.deepEqual(settings.permissions, { ask: ['Agent'] });
+    assert.deepEqual(settings.sandbox.network.allowedDomains, ['127.0.0.1:4317']);
+    assert.equal(settings.model, undefined);
+    launcher.stop(agentKey);
+  } finally {
+    rmSync(file);
+  }
+});
+
+for (const settingsFile of ['settings.json', 'settings.local.json']) {
+  for (const [name, text] of [
+    ['PermissionRequest hook', JSON.stringify({ hooks: { PermissionRequest: [{ hooks: [{ type: 'command', command: 'x' }] }] } })],
+    ['PreToolUse hook', JSON.stringify({ hooks: { PreToolUse: [{ hooks: [{ type: 'command', command: 'x' }] }] } })],
+    ['unreadable settings', '{ no es json'],
+  ]) {
+    test(`a project with ${name} in ${settingsFile} is refused even when trusted`, async () => {
+      const dir = mkdtempSync(join(tmp, 'rival-'));
+      mkdirSync(join(dir, '.claude'));
+      writeFileSync(join(dir, '.claude', settingsFile), text);
+      const r = await api('POST', '/api/agents', { role: 'legal', cwd: dir, prompt: 'hola', trustProject: true });
+      assert.equal(r.status, 400);
+      assert.ok(r.body.error.includes(settingsFile));
+      assert.notEqual(r.body.code, 'untrusted', 'trust cannot override this');
+    });
+  }
+}
+
+test('the first prompt is announced once although init repeats every turn', async () => {
+  const { recs, launcher, of } = harness();
+  const { agentKey } = launcher.launch({ role: 'tester', cwd: project, prompt: 'uno' });
+  await waitFor(() => texts(recs).length === 1);
+  launcher.sendPrompt(agentKey, 'dos');
+  await waitFor(() => texts(recs).length === 2);
+  assert.equal(of(agentKey, (r) => r.kind === 'stream' && r.body.subtype === 'init').length, 2);
+  assert.equal(of(agentKey, (r) => r.body.event === 'started').length, 1);
+  assert.deepEqual(of(agentKey, (r) => r.body.event === 'prompt').map((r) => r.body.text), ['uno', 'dos']);
+  launcher.stop(agentKey);
+});
+
+test('a permission request with a malformed body -> 400 and no card', async () => {
+  const { launchToken, agentKey } = srv.launcher.launch({ role: 'tester', cwd: project, prompt: 'hola' });
+  const send = (body) => new Promise((resolve, reject) => {
+    const req = http.request({ host: '127.0.0.1', port, method: 'POST', path: '/hooks/permission', headers: { host: `127.0.0.1:${port}`, authorization: `Bearer ${launchToken}`, 'content-type': 'application/json' } }, (res) => {
+      res.resume();
+      resolve(res.statusCode);
+    });
+    req.on('error', reject);
+    req.end(JSON.stringify(body));
+  });
+  for (const body of [null, [], {}, { session_id: '__proto__', tool_name: 'Bash' }]) assert.equal(await send(body), 400, JSON.stringify(body));
+  assert.equal(Object.keys(srv.state.pending).length, 0);
+  srv.launcher.stop(agentKey);
 });
 
 test('I1: an agent that does not start in default permission mode is killed', async () => {
