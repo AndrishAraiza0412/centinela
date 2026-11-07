@@ -46,6 +46,12 @@ const json = (token, obj) => ({
 });
 const event = (extra = {}) => ({ session_id: 'sess-1', cwd: '/tmp/demo', hook_event_name: 'UserPromptSubmit', ...extra });
 
+test('serves the favicon', async () => {
+  const res = await request({ path: '/favicon.svg' });
+  assert.equal(res.status, 200);
+  assert.match(res.body, /<svg/);
+});
+
 test('POST /hooks/event without token -> 401', async () => {
   assert.equal((await request(json(null, event()))).status, 401);
 });

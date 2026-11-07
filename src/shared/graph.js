@@ -140,7 +140,7 @@ function reduceHook(state, b, ts) {
     case 'PostToolUse':
     case 'PostToolUseFailure': {
       const action = node.actions.find((a) => a.toolUseId === b.tool_use_id);
-      if (action) action.ok = b.hook_event_name === 'PostToolUse';
+      if (action) Object.assign(action, { ok: b.hook_event_name === 'PostToolUse', endedAt: ts });
       // Una delegación que terminó (o falló) ya no puede emparejarse con un SubagentStart futuro.
       if (b.tool_name === DELEGATION_TOOL) dropDelegation(state, (q) => q.toolUseId === b.tool_use_id);
       break;
@@ -249,7 +249,7 @@ function reduceLaunch(state, agentKey, b, ts) {
       nodes = [state.nodes[id]];
     }
     for (const node of nodes) {
-      node.exit = { code: b.code ?? null, signal: b.signal ?? null, stderrTail: b.stderrTail ?? '', ...(b.error && { error: b.error }) };
+      node.exit = { code: b.code ?? null, signal: b.signal ?? null, stderrTail: b.stderrTail ?? '', ...(b.stopped && { stopped: true }), ...(b.error && { error: b.error }) };
       if (node.sessionId) endSession(state, node.sessionId, status, ts);
       end(node, status, ts);
     }

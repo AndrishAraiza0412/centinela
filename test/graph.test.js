@@ -8,6 +8,17 @@ const fixture = (name) =>
 
 const hook = (body, ts = 1) => ({ ts, kind: 'hook', body: { session_id: 's1', cwd: '/tmp/demo', ...body } });
 
+test('an action records when it ended and a stop by the user is remembered', () => {
+  const s = initState();
+  reduce(s, hook({ hook_event_name: 'PreToolUse', tool_name: 'Read', tool_input: { file_path: '/a' }, tool_use_id: 't1' }, 10));
+  reduce(s, hook({ hook_event_name: 'PostToolUse', tool_name: 'Read', tool_use_id: 't1' }, 25));
+  assert.deepEqual([s.nodes.s1.actions[0].ok, s.nodes.s1.actions[0].endedAt], [true, 25]);
+  reduce(s, { ts: 30, kind: 'launch', agentKey: 'k1', body: { event: 'started', sessionId: 's2', cwd: '/tmp', role: 'qa' } });
+  reduce(s, { ts: 31, kind: 'launch', agentKey: 'k1', body: { event: 'exited', code: 143, signal: null, stopped: true } });
+  assert.equal(s.nodes.s2.status, 'done');
+  assert.equal(s.nodes.s2.exit.stopped, true);
+});
+
 test('subagent session builds parent→child edge', () => {
   const s = initState();
   for (const rec of fixture('subagent-session.jsonl')) reduce(s, rec);

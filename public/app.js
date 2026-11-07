@@ -142,7 +142,7 @@ function renderTabs() {
   }
   if (project && !projects.has(project)) project = '';
   const tab = (value, label, info) => el('button', {
-    type: 'button', class: 'nav-item', title: value || 'Todos los proyectos', 'aria-label': label,
+    type: 'button', class: 'nav-item', title: value || 'Todos los proyectos', 'aria-label': info ? `${label} ${info.active}` : label,
     'aria-current': project === value ? 'page' : undefined,
     onclick: () => {
       project = value;
@@ -367,7 +367,7 @@ function renderTimeline(nodes) {
     ...nodes.map((n) => {
       const track = el('div', { class: 'track' });
       n.actions.forEach((a, i) => {
-        const end = n.actions[i + 1]?.ts ?? n.endedAt ?? now;
+        const end = a.endedAt ?? n.actions[i + 1]?.ts ?? n.endedAt ?? now;
         const block = el('div', { class: `block ok-${a.ok}`, title: `${time(a.ts)} ${a.summary}` });
         block.style.left = pct(a.ts);
         block.style.width = `${((end - a.ts) / span) * 100}%`;

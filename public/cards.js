@@ -4,7 +4,7 @@ import { el, time } from '/dom.js';
 import { icon } from '/icons.js';
 
 export const STATUS_LABEL = {
-  idle: 'Inactivo', working: 'Trabajando', waiting: 'Espera permiso',
+  idle: 'Inactivo', working: 'Trabajando', waiting: 'Te espera',
   done: 'Terminado', error: 'Error',
 };
 const LINES = 5;
@@ -28,8 +28,8 @@ function actionLine(a) {
 }
 
 export function createCard(n, { onSelect }) {
-  const kind = kindOf(n);
   const p = {
+    icon: el('span', { class: 'card-icon' }),
     title: el('button', { type: 'button', class: 'card-title', onclick: () => onSelect(n.id) }),
     kind: el('span', { class: 'card-kind' }),
     pill: el('span', { class: 'pill' }),
@@ -42,7 +42,7 @@ export function createCard(n, { onSelect }) {
   };
   const card = el('article', { class: 'card' },
     el('header', { class: 'card-head' },
-      el('span', { class: 'card-icon' }, icon(kind.icon, { size: 16 })),
+      p.icon,
       el('div', { class: 'card-id' }, p.title, p.kind),
       p.pill),
     p.now, p.term, p.say, p.perms, p.foot);
@@ -63,6 +63,9 @@ export function createCard(n, { onSelect }) {
     card.setAttribute('aria-label', `${n.role}: ${STATUS_LABEL[n.status] ?? n.status}`);
     p.title.textContent = n.role;
     p.title.setAttribute('aria-pressed', String(selected));
+    // Un agente lanzado puede nacer como sesión: su SessionStart llega antes que `started`.
+    const kind = kindOf(n);
+    refill('icon', kind.icon, () => [icon(kind.icon, { size: 16 })]);
     p.kind.textContent = [kind.text, basename(n.cwd)].filter(Boolean).join(' · ');
     p.pill.textContent = STATUS_LABEL[n.status] ?? n.status;
     p.pill.className = `pill pill-${n.status}`;
@@ -88,7 +91,7 @@ export function createCard(n, { onSelect }) {
     if (n.usage?.contextTokens) bits.push(`contexto ${tokens(n.usage.contextTokens)}`);
     if (typeof n.usage?.costUsd === 'number') bits.push(`≈ $${n.usage.costUsd.toFixed(2)} (estimado)`);
     const end = n.exit
-      ? (n.exit.error ? 'detenido por seguridad' : n.exit.signal ? `salió (${n.exit.signal})` : `salió con código ${n.exit.code}`)
+      ? (n.exit.error ? 'detenido por seguridad' : n.exit.stopped ? 'detenido por ti' : n.exit.signal ? `salió (${n.exit.signal})` : `salió con código ${n.exit.code}`)
       : `desde ${time(n.startedAt)}`;
     refill('foot', `${bits.join()}|${end}`, () => [el('span', { text: bits.join(' · ') }), el('span', { text: end })]);
   }
