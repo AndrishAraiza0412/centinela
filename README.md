@@ -1,78 +1,89 @@
 # Centinela
 
-Panel local para ver en vivo tus sesiones y subagentes de Claude Code, lanzar agentes por rol, enviarles prompts y aprobar sus permisos.
+[![CI](https://github.com/AndrishAraiza0412/centinela/actions/workflows/ci.yml/badge.svg)](https://github.com/AndrishAraiza0412/centinela/actions/workflows/ci.yml)
 
-Node ≥ 22, sin dependencias ni CDN: funciona sin internet. Solo escucha en `127.0.0.1:4317`.
+**Agent observability with human approval of permissions.** A local dashboard to watch your Claude Code sessions and subagents live, launch agents by role, send them prompts and approve or reject what they want to do.
 
-## Arrancar
+![Centinela dashboard: a coordinator delegates to three subagents and one waits for approval to run a command](docs/panel.png)
+
+*Demo data. The interface is in Spanish.*
+
+- **See what agents do:** every session and subagent is a live card with its status, recent actions and delegations.
+- **Decide what they may do:** launched agents ask before acting. Each request shows the full input, with invisible characters flagged, and is denied if nobody answers.
+- **Fail closed:** no answer in 5 minutes, or Centinela switched off, means the request is rejected.
+- **Local and dependency-free:** Node ≥ 22, no packages, no CDN, works offline. Listens only on `127.0.0.1:4317`. 108 automated tests.
+
+## Getting started
 
 ```sh
 node bin/centinela.js
 ```
 
-Imprime `http://127.0.0.1:4317/#pair=…` y lo abre en el navegador. Ese código sirve **una sola vez**: la página lo canjea por el token de sesión, que vive solo en esa pestaña (sobrevive a recargas). Si abres otra pestaña o reinicias Centinela, vuelve a ejecutar `node bin/centinela.js` desde tu terminal.
+It prints `http://127.0.0.1:4317/#pair=…` and opens it in your browser. That code works **once**: the page exchanges it for a session token that lives only in that tab (it survives reloads). To open another tab, or after restarting Centinela, run `node bin/centinela.js` again from your terminal.
 
-Arráncalo desde tu propia terminal, no desde una sesión de Claude Code: la salida de un comando lanzado por Claude queda en archivos que otros comandos pueden leer.
+Start it from your own terminal, not from a Claude Code session: the output of a command launched by Claude ends up in files other commands can read.
 
-## Observar tus sesiones (hooks)
+## Observing your sessions (hooks)
 
 ```sh
-node bin/centinela-hooks.js install     # muestra el diff y pide confirmación
-node bin/centinela-hooks.js uninstall   # quita solo lo que añadió Centinela
+node bin/centinela-hooks.js install     # shows the diff and asks for confirmation
+node bin/centinela-hooks.js uninstall   # removes only what Centinela added
 ```
 
-- Escribe en `$CLAUDE_CONFIG_DIR/settings.json` (o `~/.claude/settings.json`) y deja una copia `settings.json.centinela-backup-<ts>` antes de cada cambio.
-- Añade un hook `http` por evento hacia `/hooks/event`. Tus hooks no se tocan; los de Centinela se reconocen por su URL.
-- Si tienes el sandbox activo, añade `127.0.0.1:4317` (solo el puerto de Centinela) a `sandbox.network.allowedDomains`; sin eso los hooks reciben 403. Los comandos sandboxeados pueden alcanzar ese puerto, pero sin el token de la página no pueden hacer nada más que enviar eventos validados. `uninstall` lo quita solo si lo añadió Centinela.
-- Con Centinela apagado, los hooks de observación fallan en silencio: tus sesiones siguen igual.
+- Writes to `$CLAUDE_CONFIG_DIR/settings.json` (or `~/.claude/settings.json`) and leaves a `settings.json.centinela-backup-<ts>` copy before each change.
+- Adds one `http` hook per event pointing to `/hooks/event`. Your own hooks are left alone; Centinela's are recognized by their URL.
+- If your sandbox is on, it adds `127.0.0.1:4317` (only Centinela's port) to `sandbox.network.allowedDomains`; without that, hooks get a 403. Sandboxed commands can reach that port, but without the page token they can only send validated events. `uninstall` removes the entry only if Centinela added it.
+- With Centinela off, observation hooks fail silently: your sessions carry on as usual.
 
-## El panel
+## The dashboard
 
-- **Arranca vacío:** el lienzo solo muestra lo que ocurre desde que abriste Centinela (el historial sigue guardado en `~/.centinela/`).
-- **Proyectos:** en la barra lateral, una vista por cada carpeta con agentes, con el número de agentes activos; «Todos» los muestra juntos.
-- **Lienzo de agentes:** cada sesión y subagente es una tarjeta (estado, qué hace ahora, últimas acciones, última respuesta y, si te espera, su permiso ahí mismo). Las líneas punteadas muestran la tarea delegada. Arrastra el fondo o desliza con dos dedos para moverte; pellizca o ⌘+rueda para el zoom; «Encuadrar» vuelve a mostrar todo.
-- **Te esperan:** el contador de arriba lleva al agente que espera un permiso. Un agente que espera se ve siempre, aunque los filtros lo oculten.
-- **Barra de comandos:** «Mensaje a todos» o a un agente lanzado (⌘↩), «Nuevo agente» y «Detener todos» (pide confirmar).
-- **Línea de tiempo:** un carril por agente.
+- **Starts empty:** the canvas only shows what happens after you open Centinela (history stays in `~/.centinela/`).
+- **Projects:** the sidebar has one view per folder with agents and its count of active agents; "Todos" (All) shows them together.
+- **Agent canvas:** each session and subagent is a card (status, current activity, recent actions, last response and, if it is waiting on you, its permission request right there). Dotted lines show the delegated task. Drag the background or swipe with two fingers to move; pinch or ⌘+wheel to zoom; "Encuadrar" (Fit) shows everything again.
+- **Waiting on you:** the counter at the top takes you to the agent waiting for a permission. A waiting agent is always visible, even if filters would hide it.
+- **Command bar:** message all launched agents or one of them (⌘↩), "Nuevo agente" (New agent) and "Detener todos" (Stop all, asks for confirmation).
+- **Timeline:** one lane per agent.
 
-## Agentes lanzados desde el panel
+## Agents launched from the dashboard
 
-"+ Nuevo agente" lanza `claude -p --agent <rol>` en la carpeta que elijas, con el modelo que elijas: el de tu configuración, el más reciente de cada familia o una versión concreta (Fable 5.1 y 5, Opus 5.5 a 4.6, Sonnet 5.5, 5 y 4.6, Haiku 5.5 y 4.5; la lista está en `src/shared/models.js`).
+"Nuevo agente" runs `claude -p --agent <role>` in the folder you choose, with the model you choose: your configured one, the latest of each family or a specific version (the list is in `src/shared/models.js`).
 
-**Equipo** (casilla del diálogo, activada por defecto): el agente recibe los demás roles como subagentes y la instrucción de repartir las partes independientes en paralelo, encargar a un rol distinto la revisión de cada resultado, mandar corregir lo que falle (hasta 3 rondas) y seguir coordinando cuando le pidas más. Los subagentes no pueden delegar a su vez: el coordinador reparte. Sus permisos pasan por el panel igual que los del agente; para ver cada subagente como tarjeta, instala los hooks de observación.
+**Team** (dialog checkbox, on by default): the agent gets the other roles as subagents and instructions to split independent parts in parallel, have a different role review each result, send failures back for correction (up to 3 rounds) and keep coordinating when you ask for more. Subagents cannot delegate further: the coordinator assigns the work. Their permissions go through the dashboard just like the agent's; to see each subagent as a card, install the observation hooks.
 
-- **Lanzar un subagente pide permiso** (en todos los agentes lanzados, con o sin equipo): la tarjeta dice qué rol, para qué y el encargo completo.
-- **Dos agentes, un archivo:** si un agente quiere cambiar un archivo que otro agente aún activo ya cambió (o está pidiendo cambiar), Centinela no te lo pregunta todavía: le devuelve al agente el cambio del otro para que relea el archivo e integre ambos, o explique el choque al coordinador. Su segundo intento te llega como tarjeta normal, marcada «Otro agente también cambia este archivo», con el cambio del otro para comparar. En la tarjeta del agente queda la acción «Revisión».
+- **Launching a subagent asks for permission** (in every launched agent, with or without a team): the card says which role, what for and the full assignment.
+- **Two agents, one file:** if an agent wants to change a file that another still-active agent already changed (or is asking to change), Centinela does not ask you yet. It returns the other agent's change so the agent can reread the file and integrate both, or explain the conflict to the coordinator. The second attempt reaches you as a normal card, marked "Otro agente también cambia este archivo" (Another agent is also changing this file), with the other change to compare. The agent's card records a "Revisión" (Review) action.
 
-Los roles salen de:
+Roles come from:
 
-- `roles/*.md` de Centinela (incluidos): desarrollador, arquitecto, legal, diseñador, qa, seguridad, devops, documentador, producto y datos. Se pasan con `--agents` al lanzar; no tocan tu configuración. Si tú o el proyecto tienen un rol con el mismo nombre, se usa ese.
-- Tu carpeta de agentes de Claude Code (`agents/*.md`) y `.claude/agents/*.md` del proyecto.
+- Centinela's `roles/*.md` (built in): developer, architect, legal, designer, QA, security, DevOps, documentation, product and data. They are passed with `--agents` at launch and do not touch your configuration. If you or the project have a role with the same name, that one is used.
+- Your Claude Code agents folder (`agents/*.md`) and the project's `.claude/agents/*.md`.
 
-- Corren en modo de permisos `default` (si `claude` informa otro modo al arrancar, Centinela lo detiene): cada permiso aparece como tarjeta con la entrada completa, y los caracteres invisibles o el relleno de espacios se muestran marcados. Permitir / Permitir esta misma acción durante la sesión (misma herramienta, mismo agente y exactamente la misma entrada) / Rechazar.
-- Todo Bash pasa por el panel, también el que correría dentro del sandbox (en tus sesiones de terminal, Claude Code lo aprueba solo; en los agentes lanzados se desactiva con `autoAllowBashIfSandboxed: false`).
-- `claude -p` se salta el diálogo de confianza de carpetas: si la carpeta trae `.claude/settings*.json` o `.mcp.json`, el panel te pide confirmarlo antes de lanzar.
-- Un rol del proyecto con el mismo nombre que uno tuyo no se puede lanzar ahí (no sabrías cuál se ejecuta).
-- Sin respuesta en 5 minutos → se rechaza. Con Centinela apagado → se rechaza (`onFailure: block`).
-- "Continuar aquí", en una sesión de terminal, la retoma con `--resume` en una rama nueva; la de la terminal no cambia.
+How they run:
 
-## Datos y tokens
+- They use the `default` permission mode (if `claude` reports another mode at startup, Centinela stops it). Each permission appears as a card with the full input, and invisible characters or space padding are flagged. Allow / Allow this same action for the session (same tool, same agent and exactly the same input) / Reject.
+- All Bash goes through the dashboard, including commands that would run inside the sandbox (in your terminal sessions Claude Code auto-approves those; in launched agents this is turned off with `autoAllowBashIfSandboxed: false`).
+- `claude -p` skips the folder trust dialog: if the folder has `.claude/settings*.json` or `.mcp.json`, the dashboard asks you to confirm before launching.
+- A project role with the same name as one of yours cannot be launched there (you would not know which one runs).
+- No answer in 5 minutes → rejected. Centinela off → rejected (`onFailure: block`).
+- "Continuar aquí" (Continue here), on a terminal session, resumes it with `--resume` on a new branch; the terminal's session does not change.
 
-Todo vive en `~/.centinela/` (`0700`; archivos `0600`):
+## Data and tokens
 
-| Archivo | Para qué |
+Everything lives in `~/.centinela/` (`0700`; files `0600`):
+
+| File | Purpose |
 |---|---|
-| `hook-token` | Solo permite enviar eventos a `/hooks/event` (se validan). Va escrito en tu `settings.json`. |
-| `events-YYYY-MM-DD.jsonl` | Historial de eventos. Puede contener lo que tus agentes leyeron o escribieron. No se vuelve a cargar al arrancar. |
+| `hook-token` | Only allows sending events to `/hooks/event` (they are validated). Written in your `settings.json`. |
+| `events-YYYY-MM-DD.jsonl` | Event history. May contain whatever your agents read or wrote. Not reloaded at startup. |
 
-El token de la página no se guarda en disco: se genera en cada arranque y solo se entrega por el código de un solo uso. Cada agente lanzado recibe además un token propio, en memoria, que solo sirve para pedir permisos y muere con él.
+The page token is never stored on disk: it is generated on each start and delivered only through the single-use code. Each launched agent also gets its own in-memory token, which can only request permissions and dies with the agent.
 
-## Desarrollo
+## Development
 
 ```sh
 npm test
 ```
 
-Variables para pruebas: `CENTINELA_HOME`, `CENTINELA_PORT`, `CENTINELA_CLAUDE_BIN`, `CENTINELA_NO_OPEN`, `CENTINELA_PERMISSION_TIMEOUT_MS`.
+Test variables: `CENTINELA_HOME`, `CENTINELA_PORT`, `CENTINELA_CLAUDE_BIN`, `CENTINELA_NO_OPEN`, `CENTINELA_PERMISSION_TIMEOUT_MS`.
 
-Documentación: `docs/diseno-v1.md` (diseño y modelo de amenazas), `docs/plan-v1.md`, `docs/spike-notes.md`, `docs/decisiones-v1.md`, `docs/pendientes-v1.md`; sistema visual en `DESIGN.md` y producto en `PRODUCT.md`.
+Documentation (in Spanish): `docs/diseno-v1.md` (design and threat model), `docs/plan-v1.md`, `docs/spike-notes.md`, `docs/decisiones-v1.md`, `docs/pendientes-v1.md`; visual system in `DESIGN.md` and product in `PRODUCT.md`.
