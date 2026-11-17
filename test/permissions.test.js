@@ -1,3 +1,5 @@
+// Tests for permission handling over HTTP: token checks, allow/deny decisions reaching the hook response,
+// allow-session rules, timeouts and cancelled requests.
 import { test, before, after } from 'node:test';
 import assert from 'node:assert/strict';
 import http from 'node:http';

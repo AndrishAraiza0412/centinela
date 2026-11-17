@@ -1,18 +1,18 @@
-// Lienzo de agentes: cámara (desplazar/zoom), distribución en árbol por sesión y aristas.
-// Las tarjetas son DOM normal dentro de un "mundo" transformado; las aristas, un SVG en el mismo mundo.
+// Agent canvas: camera (pan/zoom), per-session tree layout and edges.
+// Cards are normal DOM inside a transformed "world"; edges are an SVG in the same world.
 import { el } from '/dom.js';
 
 const NS = 'http://www.w3.org/2000/svg';
-const GAP_X = 168; // deja sitio a la etiqueta de la arista entre tarjeta y tarjeta
+const GAP_X = 168; // leaves room for the edge label between one card and the next
 const GAP_Y = 28;
 const SESSION_GAP = 56;
-const FIT_MIN = 0.85; // encuadrar nunca deja las tarjetas ilegibles: mejor desplazar
-const ANCHOR_Y = 30; // altura de la cabecera de la tarjeta donde nacen y llegan las aristas
+const FIT_MIN = 0.85; // fitting never leaves the cards unreadable: better to pan
+const ANCHOR_Y = 30; // height of the card header where edges start and end
 const Z_MIN = 0.3;
 const Z_MAX = 1.5;
 const clamp = (v, a, b) => Math.min(b, Math.max(a, v));
 
-// insetBottom: alto de lo que flota sobre el lienzo (la barra de comandos); la cámara nunca deja nada debajo.
+// insetBottom: height of what floats over the canvas (the command bar); the camera never leaves anything underneath.
 export function createCanvas(root, { onZoom = () => {}, onBackground = () => {}, insetBottom = () => 0 } = {}) {
   const svg = document.createElementNS(NS, 'svg');
   svg.setAttribute('class', 'edges');
@@ -45,7 +45,7 @@ export function createCanvas(root, { onZoom = () => {}, onBackground = () => {},
     apply();
   }
 
-  // Trackpad: dos dedos desplaza, pellizco (ctrl) hace zoom. Rueda con ⌘ también hace zoom.
+  // Trackpad: two fingers pan, pinch (ctrl) zooms. Wheel with ⌘ also zooms.
   root.addEventListener('wheel', (e) => {
     e.preventDefault();
     if (e.ctrlKey || e.metaKey) zoomAt(e.clientX, e.clientY, Math.exp(-e.deltaY * 0.01));
@@ -57,7 +57,7 @@ export function createCanvas(root, { onZoom = () => {}, onBackground = () => {},
     }
   }, { passive: false });
 
-  // Arrastrar el fondo desplaza; un clic sin arrastre sobre el fondo deselecciona.
+  // Dragging the background pans; a click without dragging on the background deselects.
   let drag = null;
   root.addEventListener('pointerdown', (e) => {
     if (e.button !== 0 || e.target.closest('.card, .edge-label')) return;
@@ -83,7 +83,7 @@ export function createCanvas(root, { onZoom = () => {}, onBackground = () => {},
   root.addEventListener('pointerup', endDrag);
   root.addEventListener('pointercancel', endDrag);
 
-  // Árbol por sesión, de izquierda a derecha; sesiones apiladas en el orden en que empezaron.
+  // Tree per session, left to right; sessions stacked in the order they started.
   function layout(nodes, edges, sizeOf) {
     const ids = new Set(nodes.map((n) => n.id));
     const kids = new Map();
@@ -108,8 +108,8 @@ export function createCanvas(root, { onZoom = () => {}, onBackground = () => {},
       }
       return Math.max(h, cy - y - GAP_Y);
     };
-    // Cada sesión se distribuye sola en (0,0); luego los árboles se acomodan en filas
-    // del ancho del lienzo, como un tablero, en lugar de una columna interminable.
+    // Each session lays itself out at (0,0); then the trees are arranged in rows
+    // of the canvas width, like a board, instead of one endless column.
     const trees = [];
     const tree = (rootId) => {
       const before = new Set(pos.keys());
@@ -120,7 +120,7 @@ export function createCanvas(root, { onZoom = () => {}, onBackground = () => {},
       trees.push({ ids, w, h });
     };
     for (const id of nodes.map((n) => n.id).filter((id) => !hasParent.has(id)).sort(byStart)) tree(id);
-    for (const n of nodes) if (!seen.has(n.id)) tree(n.id); // ciclos: nunca perder un nodo
+    for (const n of nodes) if (!seen.has(n.id)) tree(n.id); // cycles: never lose a node
     const maxW = Math.max(...trees.map((t) => t.w), (root.clientWidth - 112) / 0.85);
     let x = 0, y = 0, rowH = 0;
     for (const t of trees) {
@@ -157,8 +157,8 @@ export function createCanvas(root, { onZoom = () => {}, onBackground = () => {},
     return { d: `M${x1} ${y1} C${x1 + dx} ${y1}, ${x2 - dx} ${y2}, ${x2} ${y2}`, mx: (x1 + x2) / 2, my: (y1 + y2) / 2 };
   }
 
-  // cards: Map id -> elemento ya actualizado. edges: aristas del estado. status: id -> status.
-  // waitingId: el agente que espera un permiso; mientras el usuario no mueva la cámara, queda a la vista.
+  // cards: Map id -> already updated element. edges: edges from the state. status: id -> status.
+  // waitingId: the agent waiting for a permission; as long as the user does not move the camera, it stays in view.
   let lastWaiting = null;
   function render(nodes, edges, cards, status, waitingId = null) {
     for (const [id, card] of cards) {
@@ -173,7 +173,7 @@ export function createCanvas(root, { onZoom = () => {}, onBackground = () => {},
     for (const [id, p] of positions) {
       const card = cards.get(id);
       card.style.transform = `translate(${p.x}px, ${p.y}px)`;
-      // Solo después de la primera colocación se anima el movimiento (nada vuela desde 0,0).
+      // Movement is animated only after the first placement (nothing flies in from 0,0).
       if (!card.classList.contains('placed')) requestAnimationFrame(() => card.classList.add('placed'));
     }
 
@@ -203,7 +203,7 @@ export function createCanvas(root, { onZoom = () => {}, onBackground = () => {},
     }
     for (const [key, label] of labels) if (!live.has(key)) { label.remove(); labels.delete(key); }
 
-    // Mientras el usuario no mueva la cámara, cada agente nuevo vuelve a encuadrarse.
+    // As long as the user does not move the camera, each new agent is framed again.
     const sig = [...positions.keys()].sort().join('|');
     if (!userMoved && (sig !== layoutSig || waitingId !== lastWaiting)) {
       fit();
@@ -213,7 +213,7 @@ export function createCanvas(root, { onZoom = () => {}, onBackground = () => {},
     lastWaiting = waitingId;
   }
 
-  // Lleva la tarjeta entera a la zona visible (sobre la barra de comandos); si no cabe, su parte de arriba.
+  // Brings the whole card into the visible area (above the command bar); if it does not fit, its top part.
   function focus(id) {
     if (show(id)) userMoved = true;
   }

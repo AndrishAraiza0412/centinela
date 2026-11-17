@@ -1,5 +1,5 @@
-// Panel: snapshot por SSE + reduce local de cada evento; lienzo de tarjetas, cajón de detalle,
-// barra de comandos y línea de tiempo. Todo texto de eventos entra con textContent (spec §5).
+// Dashboard: snapshot over SSE + local reduce of each event; card canvas, detail drawer,
+// command bar and timeline. All event text enters through textContent (spec §5).
 import { reduce, nodeId } from '/shared/graph.js';
 import { el, time, load, save } from '/dom.js';
 import { icon } from '/icons.js';
@@ -16,17 +16,17 @@ const $ = (sel) => document.querySelector(sel);
 let token = null;
 let state = null;
 let selected = null;
-let selectWhenLaunched = null; // agentKey recién lanzado: se selecciona cuando aparezca su nodo
+let selectWhenLaunched = null; // agentKey just launched: it is selected when its node appears
 let project = load('centinela-project') ?? '';
 let view = load('centinela-view') === 'timeline' ? 'timeline' : 'canvas';
-const raw = new Map(); // nodeId -> registros vistos desde que se abrió la página
+const raw = new Map(); // nodeId -> records seen since the page was opened
 const cards = new Map(); // nodeId -> { el, update }
 const basename = (p) => (p ? p.split('/').filter(Boolean).pop() : '') || p || '';
 
 // ---------- emparejamiento ----------
 
-// La URL trae un código de un solo uso (#pair=…) que se canjea por el ui-token; el token
-// vive solo en esta pestaña. Nada reutilizable queda en el historial del navegador.
+// The URL carries a one-time code (#pair=…) that is exchanged for the ui-token; the token
+// lives only in this tab. Nothing reusable stays in the browser history.
 async function obtainToken() {
   const m = /pair=([0-9a-f]+)/.exec(location.hash);
   if (!m) {
@@ -91,9 +91,9 @@ function select(id) {
   scheduleRender();
 }
 
-// ---------- qué se ve ----------
+// ---------- what is shown ----------
 
-// Un agente que espera un permiso se ve siempre, aunque el filtro lo esconda: nadie debe esperarte a oscuras.
+// An agent waiting for a permission is always shown, even if the filter hides it: nobody should wait on you in the dark.
 function visibleNodes() {
   const onlyActive = $('#filter-active').checked;
   const waiting = new Set(Object.values(state.pending).map((p) => p.nodeId));
@@ -103,7 +103,7 @@ function visibleNodes() {
 
 const liveLaunched = () => Object.values(state.nodes).filter((n) => n.launched && LIVE.has(n.status));
 
-// ---------- barra superior: contadores y pestañas ----------
+// ---------- top bar: counters and tabs ----------
 
 function renderCounters() {
   const nodes = Object.values(state.nodes);
@@ -116,7 +116,7 @@ function renderCounters() {
       const target = pending.toSorted((a, b) => a.ts - b.ts)[0];
       if (!target) return;
       setView('canvas');
-      // En pantallas estrechas el cajón tapa el lienzo, y la aprobación vive en la tarjeta: solo enfocar.
+      // On narrow screens the drawer covers the canvas, and approval lives on the card: just focus.
       if (!matchMedia('(max-width: 760px)').matches) select(target.nodeId);
       requestAnimationFrame(() => canvas.focus(target.nodeId));
     },
@@ -129,7 +129,7 @@ function renderCounters() {
   );
 }
 
-// Sección «Proyectos» de la barra lateral: una vista por cada carpeta con agentes en esta ejecución.
+// "Projects" section of the sidebar: one view for each folder with agents in this run.
 function renderTabs() {
   const projects = new Map();
   for (const n of Object.values(state.nodes)) {
@@ -180,10 +180,10 @@ function renderCanvas(nodes) {
   canvas.render(nodes, state.edges, els, status, waiting?.nodeId ?? null);
 }
 
-// ---------- cajón de detalle ----------
+// ---------- detail drawer ----------
 
-// El esqueleto (incluidos los campos de texto) se construye una vez por nodo;
-// cada evento solo actualiza su contenido, así no se pierde lo que el usuario escribe.
+// The skeleton (including the text fields) is built once per node;
+// each event only updates its content, so what the user is typing is not lost.
 let panel = null;
 
 function buildPanel(n) {
@@ -314,7 +314,7 @@ function renderCommandBar() {
 $('#op-stop-all').addEventListener('click', async () => {
   const stop = $('#op-stop-all');
   const live = liveLaunched();
-  // Dos pasos: detener a todos no se deshace.
+  // Two steps: stopping everyone cannot be undone.
   if (!stopArmed) {
     stopArmed = setTimeout(() => { stopArmed = null; renderCommandBar(); }, 4000);
     stop.classList.add('armed');
@@ -349,7 +349,7 @@ $('#say-text').addEventListener('keydown', (e) => {
 });
 $('#say-target').addEventListener('change', renderCommandBar);
 
-// ---------- línea de tiempo ----------
+// ---------- timeline ----------
 
 function renderTimeline(nodes) {
   const box = $('#timeline');
@@ -443,7 +443,7 @@ function showFatal(text) {
 
 function connect() {
   const es = new EventSource(`/events?token=${encodeURIComponent(token)}`);
-  // El servidor manda el estado completo como primer frame de cada conexión (y de cada reconexión).
+  // The server sends the full state as the first frame of each connection (and of each reconnection).
   es.addEventListener('snapshot', (msg) => {
     state = JSON.parse(msg.data);
     setConn('En vivo', 'live');
@@ -456,7 +456,7 @@ function connect() {
   };
   es.onerror = async () => {
     setConn('Reconectando…', 'down');
-    // EventSource no expone el 401: si el token dejó de valer (Centinela se reinició), hay que volver a emparejar.
+    // EventSource does not expose the 401: if the token stopped being valid (Centinela restarted), it must pair again.
     const probe = await fetch('/api/state', { headers: { authorization: `Bearer ${token}` } }).catch(() => null);
     if (probe?.status === 401) {
       es.close();

@@ -1,6 +1,6 @@
 # Centinela v1 Implementation Plan
 
-> **Note:** this is the original v1 plan, kept as a record. Several details changed during implementation (see `decisiones-v1.md`), and the interface was later redesigned without Cytoscape or a CDN. The [README](../README.md) describes the current state.
+> **Note:** this is the original v1 plan, kept as a record. Several details changed during implementation (see `decisions-v1.md`), and the interface was later redesigned without Cytoscape or a CDN. The [README](../README.md) describes the current state.
 
 **Goal:** A local dashboard that shows Claude Code sessions and subagents live, and lets you launch agents by role, send them prompts and approve their permissions.
 
@@ -8,7 +8,7 @@
 
 **Tech Stack:** Node ≥ 22 (ESM, `node:http`, `node:test`, `node:child_process`), Cytoscape.js 3.30.2 by CDN with SRI, HTML/CSS/JS without a framework.
 
-**Spec:** `docs/diseno-v1.md`
+**Spec:** `docs/design-v1.md`
 
 ## Global Constraints
 

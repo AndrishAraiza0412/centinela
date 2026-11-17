@@ -1,6 +1,6 @@
 # Centinela v1 — implementation decisions
 
-Decisions made while executing the plan when the plan or the spec did not settle them, or when the evidence forced a deviation. Format: what was decided — why — what it costs if wrong. Minor pending items are in `pendientes-v1.md`.
+Decisions made while executing the plan when the plan or the spec did not settle them, or when the evidence forced a deviation. Format: what was decided — why — what it costs if wrong. Minor pending items are in `pending-v1.md`.
 
 - **Setup:** no worktree or task-start/task-done scripts (they require git) — the plan forbids git until Task 6 — cost if wrong: review ranges are rebuilt by hand in Task 6.
 - **Task 1:** the spike's permission hook answered deny instead of allow — the auto classifier blocked an agent with allow-all; the user chose the deny variant — cost if wrong: the allow path is only verified in Task 8/10.

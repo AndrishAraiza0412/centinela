@@ -1,4 +1,4 @@
-// Procesos `claude -p` lanzados desde el panel: roles, prompts por stdin, stream-json → broadcast.
+// `claude -p` processes launched from the dashboard: roles, prompts over stdin, stream-json → broadcast.
 import { spawn } from 'node:child_process';
 import { randomUUID, randomBytes } from 'node:crypto';
 import { createInterface } from 'node:readline';
@@ -12,15 +12,15 @@ import { MODELS } from '../shared/models.js';
 const STDERR_TAIL = 2000;
 const KILL_AFTER_MS = 5000;
 const SESSION_ID = /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i;
-// `claude -p` se salta el diálogo de confianza: estos archivos del repo se cargarían sin preguntar.
+// `claude -p` skips the trust dialog: these repo files would be loaded without asking.
 const PROJECT_CONFIG = ['.claude/settings.json', '.claude/settings.local.json', '.mcp.json'];
-// Modos en que cada permiso pasa por PermissionRequest (y por lo tanto por el panel).
+// Modes in which every permission goes through PermissionRequest (and therefore through the dashboard).
 const GATED_MODES = new Set(['default', 'manual']);
-// Comprobado con claude real: si otro hook responde allow, la acción se ejecuta aunque el panel siga esperando.
+// Verified with the real claude: if another hook answers allow, the action runs even while the dashboard is still waiting.
 const DECIDING_HOOKS = ['PermissionRequest', 'PreToolUse'];
 
-// Modo equipo: el agente coordina subagentes (herramienta Agent) de los otros roles. Los
-// subagentes no pueden delegar a su vez, así que el coordinador reparte y hace la revisión cruzada.
+// Team mode: the agent coordinates subagents (Agent tool) of the other roles. The
+// subagents cannot delegate in turn, so the coordinator distributes the work and does the cross-review.
 const teamPrompt = (roles) => `Trabajas como coordinador de un equipo. Con la herramienta Agent puedes delegar en estos roles: ${roles.join(', ')}.
 - Si la tarea tiene partes independientes, divídela y lanza varios Agent en el mismo mensaje para que trabajen en paralelo. Si es pequeña, hazla tú.
 - El usuario aprueba cada subagente que lances: en la descripción di para qué lo necesitas.
@@ -49,7 +49,7 @@ export function validateCwd(cwd) {
   return real;
 }
 
-// La confianza en la carpeta no cubre esto: el panel mostraría una decisión que ya no es del usuario.
+// Trust in the folder does not cover this: the dashboard would show a decision that is no longer the user's.
 function refuseDecidingHooks(dir) {
   for (const f of ['.claude/settings.json', '.claude/settings.local.json']) {
     const file = join(dir, f);
@@ -65,8 +65,8 @@ function refuseDecidingHooks(dir) {
   }
 }
 
-// De los ajustes del usuario solo se hereda lo que no puede aprobar nada por el panel.
-// Si no se pueden leer no se lanza: el agente perdería en silencio las reglas deny y el sandbox.
+// From the user's settings only what cannot approve anything through the dashboard is inherited.
+// If they cannot be read, it does not launch: the agent would silently lose the deny rules and the sandbox.
 function userSettings() {
   let settings;
   try {
@@ -88,12 +88,12 @@ const userMessage = (text) => JSON.stringify({ type: 'user', message: { role: 'u
 export function createLauncher({ claudeBin, port, hookToken, broadcast }) {
   const agents = new Map(); // agentKey -> { child, launchToken, alive, stopped, killTimer }
 
-  // Solo los agentes lanzados piden permisos al panel. Sin allowedDomains el sandbox del
-  // usuario responde 403 y, con onFailure:block, todo lo que pide permiso queda bloqueado (spike).
-  // Solo el puerto de Centinela, no todo 127.0.0.1.
+  // Only launched agents ask the dashboard for permissions. Without allowedDomains the user's sandbox
+  // answers 403 and, with onFailure:block, everything that asks for permission ends up blocked (spike).
+  // Only Centinela's port, not all of 127.0.0.1.
   const permSettings = (launchToken, user) => merge({
     ...(typeof user.model === 'string' && { model: user.model }),
-    // Lanzar un subagente no pide permiso en modo default: así cada uno pasa por el panel.
+    // Launching a subagent does not ask for permission in default mode: this way each one goes through the dashboard.
     permissions: { ask: ['Agent', ...strings(user.permissions?.ask)], ...(strings(user.permissions?.deny).length && { deny: strings(user.permissions.deny) }) },
     hooks: {
       PermissionRequest: [{
@@ -101,8 +101,8 @@ export function createLauncher({ claudeBin, port, hookToken, broadcast }) {
         hooks: [{ type: 'http', url: `http://127.0.0.1:${port()}/hooks/permission`, timeout: 310, onFailure: 'block', headers: { Authorization: `Bearer ${launchToken}` } }],
       }],
     },
-    // Con el sandbox activo, Claude Code aprueba solo cualquier Bash que quepa en él (también
-    // escrituras dentro del proyecto). En un agente lanzado, todo Bash pasa por el panel.
+    // With the sandbox active, Claude Code auto-approves any Bash that fits in it (also
+    // writes inside the project). In a launched agent, every Bash goes through the dashboard.
     sandbox: {
       ...(isObject(user.sandbox) && user.sandbox),
       autoAllowBashIfSandboxed: false,
@@ -131,12 +131,12 @@ export function createLauncher({ claudeBin, port, hookToken, broadcast }) {
     if (!MODELS.includes(model)) throw new LaunchError(`El modelo «${String(model)}» no está en la lista.`);
     if (typeof team !== 'boolean') throw new LaunchError('El modo equipo debe ser verdadero o falso.');
 
-    // Roles que van inline: el lanzado y, en equipo, todos los que puede delegar. Los del proyecto los carga claude.
+    // Roles that go inline: the launched one and, in team mode, all the ones it can delegate to. The project's are loaded by claude.
     const inline = team ? roles.filter((r) => r.source !== 'project' && !r.conflict).map((r) => r.name) : found.source !== 'project' ? [role] : [];
     const mates = roles.filter((r) => !r.conflict && r.name !== role).map((r) => r.name);
     const agentKey = randomUUID();
     const launchToken = randomBytes(32).toString('hex');
-    // Sin ajustes de usuario: ni sus hooks ni sus plugins pueden responder un permiso en lugar del panel.
+    // No user settings: neither their hooks nor their plugins can answer a permission instead of the dashboard.
     const args = [
       '-p', '--agent', role, '--input-format', 'stream-json', '--output-format', 'stream-json', '--verbose',
       '--setting-sources', 'project,local',
@@ -146,7 +146,7 @@ export function createLauncher({ claudeBin, port, hookToken, broadcast }) {
       ...(inline.length ? ['--agents', JSON.stringify(inlineAgents(inline))] : []),
       ...(team && mates.length ? ['--append-system-prompt', teamPrompt(mates)] : []),
     ];
-    // Los teammates de agent teams son otros procesos: no consta que hereden --settings y el panel. El modo equipo usa subagentes.
+    // Agent-team teammates are other processes: it is not established that they inherit --settings and the dashboard. Team mode uses subagents.
     const env = { ...process.env, ...userEnv(user.env), CENTINELA_AGENT_KEY: agentKey, CLAUDE_CODE_EXPERIMENTAL_AGENT_TEAMS: undefined };
     const child = spawn(claudeBin, args, { cwd: dir, env });
     const agent = { child, launchToken, alive: true, stopped: false, killTimer: null };
@@ -155,7 +155,7 @@ export function createLauncher({ claudeBin, port, hookToken, broadcast }) {
     let stderr = '';
     child.stderr.setEncoding('utf8');
     child.stderr.on('data', (c) => (stderr = (stderr + c).slice(-STDERR_TAIL)));
-    child.stdin.on('error', () => {}); // EPIPE si el proceso muere antes de leer
+    child.stdin.on('error', () => {}); // EPIPE if the process dies before reading
     child.on('error', (err) => (stderr = (stderr + `\n${err.message}`).slice(-STDERR_TAIL)));
 
     createInterface({ input: child.stdout }).on('line', (line) => {
@@ -167,22 +167,22 @@ export function createLauncher({ claudeBin, port, hookToken, broadcast }) {
       }
       broadcast({ ts: Date.now(), kind: 'stream', agentKey, body });
       if (body.type === 'system' && body.subtype === 'init' && !GATED_MODES.has(body.permissionMode)) {
-        // Un modo distinto (agente con permissionMode propio, o un alias que dejó de existir)
-        // aprobaría acciones sin pasar por el panel.
+        // A different mode (an agent with its own permissionMode, or an alias that no longer exists)
+        // would approve actions without going through the dashboard.
         agent.error = `El agente arrancó en modo de permisos «${body.permissionMode}» en vez de «default»; se detuvo.`;
         child.kill('SIGKILL');
         return;
       }
-      // system/init se repite en cada turno: arrancar y anunciar el primer prompt, solo una vez.
+      // system/init repeats on every turn: start up and announce the first prompt only once.
       if (body.type === 'system' && body.subtype === 'init' && !agent.started) {
         agent.started = true;
         broadcast({ ts: Date.now(), kind: 'launch', agentKey, body: { event: 'started', sessionId: body.session_id, cwd: dir, role, model: body.model } });
-        // El prompt inicial se anuncia aquí: antes de init el nodo aún no existe en el grafo.
+        // The initial prompt is announced here: before init the node does not exist in the graph yet.
         broadcast({ ts: Date.now(), kind: 'launch', agentKey, body: { event: 'prompt', text: prompt } });
       }
     });
 
-    // 'close' llega tras vaciar stdout/stderr: ninguna línea se pierde después de 'exited'.
+    // 'close' arrives after stdout/stderr are drained: no line is lost after 'exited'.
     child.on('close', (code, signal) => {
       agent.alive = false;
       clearTimeout(agent.killTimer);
@@ -217,7 +217,7 @@ export function createLauncher({ claudeBin, port, hookToken, broadcast }) {
     return true;
   }
 
-  // El launch-token solo vale mientras su agente vive.
+  // The launch-token is only valid while its agent is alive.
   function tokenFor(launchToken) {
     for (const [agentKey, agent] of agents) {
       if (agent.alive && safeEqual(agent.launchToken, launchToken)) return agentKey;

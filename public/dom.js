@@ -1,4 +1,4 @@
-// Helpers de DOM compartidos. Todo texto entra con textContent (spec §5).
+// Shared DOM helpers. All text enters through textContent (spec §5).
 
 export function el(tag, props = {}, ...children) {
   const node = document.createElement(tag);

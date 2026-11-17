@@ -9,7 +9,7 @@ export function append(rec) {
   appendFileSync(join(home(), `events-${day}.jsonl`), JSON.stringify(rec) + '\n', { mode: 0o600 });
 }
 
-// Solo hoy y ayer: el historial completo crece sin límite (los PostToolUse traen archivos enteros).
+// Only today and yesterday: the full history grows without limit (PostToolUse events carry whole files).
 export function loadAll() {
   const day = (ms) => `events-${new Date(ms).toLocaleDateString('sv-SE')}.jsonl`;
   const recent = new Set([day(Date.now()), day(Date.now() - 86_400_000)]);

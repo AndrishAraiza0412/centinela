@@ -1,4 +1,4 @@
-// Controles: lanzar agentes, conversar con ellos, continuar sesiones de terminal y aprobar permisos.
+// Controls: launch agents, talk to them, continue terminal sessions and approve permissions.
 import { describePermission, reveal } from '/shared/graph.js';
 import { MODEL_GROUPS } from '/shared/models.js';
 import { el, load, save } from '/dom.js';
@@ -20,7 +20,7 @@ export async function api(method, path, body) {
 }
 const errorText = (r) => r.data?.error ?? `Error ${r.status}`;
 
-// Devuelve si hay al menos un rol lanzable; si no, el selector lo dice en vez de quedarse vacío.
+// Returns whether there is at least one launchable role; if not, the selector says so instead of staying empty.
 async function fillRoles(select, cwd, err) {
   select.replaceChildren();
   select.disabled = false;
@@ -158,7 +158,7 @@ function resumeControls(n, err) {
   return { els: [form], update() {} };
 }
 
-// Se construye una vez por nodo seleccionado: lo que el usuario escribe sobrevive a cada evento SSE.
+// Built once per selected node: what the user types survives every SSE event.
 export function buildControls(n) {
   const err = el('p', { class: 'error', role: 'alert' });
   const parts = n.launched ? launchedControls(n, err) : !n.agentId ? resumeControls(n, err) : { els: [], update() {} };
@@ -181,7 +181,7 @@ function permissionCard(p, role) {
         if (!r.ok) { err.textContent = errorText(r); buttons.forEach((b) => (b.disabled = false)); }
       },
     }));
-  // Lo que se ve es lo que se ejecuta: nada recortado, y los caracteres invisibles, a la vista.
+  // What you see is what runs: nothing trimmed, and invisible characters made visible.
   const what = reveal(describePermission(p.tool, p.input));
   const full = reveal(JSON.stringify(p.input, null, 2));
   const review = p.review && reveal(p.review.with.map((o) => `${o.role} — ${o.change}`).join('\n\n'));
@@ -203,8 +203,8 @@ function permissionCard(p, role) {
     err);
 }
 
-// Las tarjetas de permiso viven dentro de la tarjeta del agente que pide; cada una se crea una
-// vez por permId (así un clic a medias o un <details> abierto sobreviven a cada evento).
+// Permission cards live inside the card of the requesting agent; each one is created once
+// per permId (so a half-finished click or an open <details> survives every event).
 export function permissionsByNode(state) {
   for (const [permId, card] of cards) {
     if (!state.pending[permId]) { card.remove(); cards.delete(permId); }
@@ -213,7 +213,7 @@ export function permissionsByNode(state) {
   for (const p of Object.values(state.pending)) {
     let card = cards.get(p.permId);
     if (!card) {
-      // El rol sale del agente dueño del launch-token; el session_id del hook es solo respaldo.
+      // The role comes from the agent that owns the launch-token; the hook's session_id is only a fallback.
       const owner = Object.values(state.nodes).find((n) => p.agentKey && n.launched === p.agentKey) ?? state.nodes[p.nodeId];
       card = permissionCard(p, owner?.role ?? 'Un agente');
       card.dataset.permId = p.permId;

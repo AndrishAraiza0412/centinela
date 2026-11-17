@@ -1,6 +1,6 @@
 import { timingSafeEqual } from 'node:crypto';
 
-// 403 ante Host u Origin ajenos (DNS rebinding, páginas web que llaman a localhost).
+// 403 for a foreign Host or Origin (DNS rebinding, web pages that call localhost).
 export function checkHostOrigin(req, port) {
   const allowed = [`127.0.0.1:${port}`, `localhost:${port}`];
   if (!allowed.includes(req.headers.host)) return 403;

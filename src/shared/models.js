@@ -1,5 +1,5 @@
-// Modelos que se pueden elegir al lanzar (servidor valida, panel muestra). `claude --model`
-// acepta el alias (la última versión de la familia) o el id exacto.
+// Models that can be chosen when launching (server validates, dashboard shows). `claude --model`
+// accepts the alias (the latest version of the family) or the exact id.
 export const MODEL_GROUPS = [
   ['Lo más reciente', [['opus', 'Opus (el más reciente)'], ['sonnet', 'Sonnet (el más reciente)'], ['haiku', 'Haiku (el más reciente)']]],
   ['Fable', [['claude-fable-5-1', 'Fable 5.1'], ['claude-fable-5', 'Fable 5']]],
@@ -8,5 +8,5 @@ export const MODEL_GROUPS = [
   ['Haiku', [['claude-haiku-5-5', 'Haiku 5.5'], ['claude-haiku-4-5', 'Haiku 4.5']]],
 ];
 
-// '' = el modelo por defecto de la configuración del usuario.
+// '' = the default model from the user's configuration.
 export const MODELS = ['', ...MODEL_GROUPS.flatMap(([, models]) => models.map(([id]) => id))];

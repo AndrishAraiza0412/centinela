@@ -1,5 +1,5 @@
-// Tarjeta de agente en el lienzo: quién es, qué hace ahora, qué hizo, qué dijo y si te espera.
-// Se construye una vez por nodo; cada evento solo actualiza su contenido (refill por firma).
+// Agent card on the canvas: who it is, what it is doing now, what it did, what it said and whether it is waiting for you.
+// Built once per node; each event only updates its content (refill by signature).
 import { el, time } from '/dom.js';
 import { icon } from '/icons.js';
 
@@ -46,7 +46,7 @@ export function createCard(n, { onSelect }) {
       el('div', { class: 'card-id' }, p.title, p.kind),
       p.pill),
     p.now, p.term, p.say, p.perms, p.foot);
-  // Clic en cualquier parte "neutra" de la tarjeta la selecciona; los controles hacen lo suyo.
+  // A click anywhere "neutral" on the card selects it; the controls do their own thing.
   card.addEventListener('click', (e) => {
     if (!e.target.closest('button, a, summary, pre, textarea, input, select')) onSelect(n.id);
   });
@@ -63,7 +63,7 @@ export function createCard(n, { onSelect }) {
     card.setAttribute('aria-label', `${n.role}: ${STATUS_LABEL[n.status] ?? n.status}`);
     p.title.textContent = n.role;
     p.title.setAttribute('aria-pressed', String(selected));
-    // Un agente lanzado puede nacer como sesión: su SessionStart llega antes que `started`.
+    // A launched agent can be born as a session: its SessionStart arrives before `started`.
     const kind = kindOf(n);
     refill('icon', kind.icon, () => [icon(kind.icon, { size: 16 })]);
     p.kind.textContent = [kind.text, basename(n.cwd)].filter(Boolean).join(' · ');

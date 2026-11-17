@@ -13,7 +13,7 @@ const MAX_BODY = 5 * 1024 * 1024;
 const SSE_FIELD_MAX = 2000;
 const root = (p) => fileURLToPath(new URL(`../../${p}`, import.meta.url));
 
-// Lista cerrada: nunca se sirve una ruta construida a partir de la URL.
+// Closed list: a path built from the URL is never served.
 const STATIC = {
   '/': ['public/index.html', 'text/html; charset=utf-8'],
   '/app.js': ['public/app.js', 'text/javascript; charset=utf-8'],
@@ -44,7 +44,7 @@ function send(res, status, body = '', type = 'text/plain; charset=utf-8') {
 
 const sendJson = (res, status, obj) => send(res, status, JSON.stringify(obj), 'application/json');
 
-// Lee el body completo; si pasa del límite sigue drenando y devuelve null.
+// Reads the full body; if it exceeds the limit it keeps draining and returns null.
 function readBody(req) {
   return new Promise((resolve, reject) => {
     const chunks = [];
@@ -81,7 +81,7 @@ const ID = /^[A-Za-z0-9][\w-]{0,127}$/;
 const RESERVED_IDS = new Set(['constructor', 'prototype']);
 const optionalString = (v) => v === undefined || (typeof v === 'string' && v.length <= 4096);
 
-// Lo mínimo para que un evento (que cualquiera con el hook-token puede forjar) no rompa el estado.
+// The minimum so that an event (which anyone with the hook-token can forge) does not break the state.
 function validHookBody(b) {
   const id = (v) => typeof v === 'string' && ID.test(v) && !RESERVED_IDS.has(v);
   return Boolean(b) && typeof b === 'object' && !Array.isArray(b)
@@ -90,7 +90,7 @@ function validHookBody(b) {
 }
 
 export function createServer({ port, uiToken, hookToken, claudeBin, pairCode }) {
-  let pairing = pairCode; // un solo uso: quien lo lea después (historial, ps) ya no obtiene nada
+  let pairing = pairCode; // single use: whoever reads it later (history, ps) gets nothing
   ensureHome();
   const state = initState();
   const clients = new Set();
@@ -98,12 +98,12 @@ export function createServer({ port, uiToken, hookToken, claudeBin, pairCode }) 
   function broadcast(rec) {
     append(rec);
     reduce(state, rec);
-    // Un permiso viaja completo: el usuario debe ver entero lo que aprueba.
+    // A permission travels in full: the user must see in full what they approve.
     const msg = `data: ${JSON.stringify(rec.kind === 'permission' ? rec : truncateRec(rec, SSE_FIELD_MAX))}\n\n`;
     for (const res of clients) res.write(msg);
   }
 
-  // Rutas /api/* ya autenticadas con el ui-token.
+  // /api/* routes already authenticated with the ui-token.
   async function handleApi(req, res, url) {
     if (req.method === 'GET' && url.pathname === '/api/state') return sendJson(res, 200, state);
 
@@ -171,7 +171,7 @@ export function createServer({ port, uiToken, hookToken, claudeBin, pairCode }) 
       return send(res, 200);
     }
 
-    // Solo agentes lanzados: su launch-token identifica al agente. Responde cuando decide el panel.
+    // Launched agents only: their launch-token identifies the agent. It responds when the dashboard decides.
     if (req.method === 'POST' && url.pathname === '/hooks/permission') {
       const agentKey = launcher.tokenFor(bearer(req));
       if (!agentKey) {
@@ -193,7 +193,7 @@ export function createServer({ port, uiToken, hookToken, claudeBin, pairCode }) 
       });
     }
 
-    // Emparejamiento: la página cambia el código de un solo uso de la URL por el ui-token.
+    // Pairing: the page exchanges the URL's one-time code for the ui-token.
     if (req.method === 'POST' && url.pathname === '/api/pair') {
       const body = await readJson(req, res);
       if (body === undefined) return;
@@ -215,11 +215,11 @@ export function createServer({ port, uiToken, hookToken, claudeBin, pairCode }) 
       }
     }
 
-    // EventSource no admite cabeceras: el ui-token va en ?token= solo en esta ruta.
+    // EventSource does not support headers: the ui-token goes in ?token= on this route only.
     if (req.method === 'GET' && url.pathname === '/events') {
       if (!safeEqual(url.searchParams.get('token'), uiToken)) return send(res, 401);
       res.writeHead(200, { 'content-type': 'text/event-stream', 'cache-control': 'no-store', connection: 'keep-alive' });
-      // El estado viaja como primer frame: entre snapshot y suscripción no se pierde ni duplica nada.
+      // The state travels as the first frame: nothing is lost or duplicated between snapshot and subscription.
       res.write(`event: snapshot\ndata: ${JSON.stringify(state)}\n\n`);
       clients.add(res);
       req.on('close', () => clients.delete(res));

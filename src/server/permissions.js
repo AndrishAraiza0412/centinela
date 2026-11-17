@@ -1,4 +1,4 @@
-// Solicitudes de permiso de los agentes lanzados: esperan la decisión del panel; sin ella → deny.
+// Permission requests from launched agents: they wait for the dashboard's decision; without one → deny.
 import { randomUUID } from 'node:crypto';
 import { resolve as resolvePath } from 'node:path';
 
@@ -21,20 +21,20 @@ function changeText({ tool, input }) {
   return `${tool}: ${text.length > CHANGE_MAX ? text.slice(0, CHANGE_MAX) + '…' : text}`;
 }
 
-// La respuesta llega al agente como el error de su herramienta: es lo que lee para revisar.
+// The response reaches the agent as its tool's error: it is what it reads to review.
 const reviewMessage = (path, others) => `Centinela pausó este cambio: otro agente también está modificando ${path} en paralelo.
 ${others.map((o) => `— ${o.role}, ${changeText(o)}`).join('\n')}
 Antes de seguir, vuelve a leer el archivo, comprueba que tu cambio es compatible con el suyo y rehaz tu edición integrando ambos. Si chocan (los dos cambian lo mismo de forma distinta), no edites: explica el conflicto en tu respuesta para que el coordinador decida.`;
 
-// isActive(sessionId, agentId) y roleOf(body) vienen del estado del grafo.
+// isActive(sessionId, agentId) and roleOf(body) come from the graph state.
 export function createPermissions({ broadcast, timeoutMs, isActive = () => true, roleOf = () => 'otro agente' }) {
   const waiting = new Map(); // permId -> { resolve, agentKey, ruleKey, timer, edit }
-  const rules = new Set(); // allow-session, en memoria: se pierden al reiniciar
+  const rules = new Set(); // allow-session, in memory: lost on restart
   const edits = new Map(); // ruta -> cambios aprobados [{ id, owner, sessionId, agentId, role, tool, input }]
-  const reviewed = new Set(); // owner|ruta|ids de los cambios ajenos que ya se le mostraron
+  const reviewed = new Set(); // owner|path|ids of the other agents' changes that were already shown to it
 
   // Mismo agente + misma herramienta + EXACTAMENTE la misma entrada (claves ordenadas):
-  // aprobar un Write no aprueba otro archivo, ni un Bash el mismo comando fuera del sandbox.
+  // approving one Write does not approve another file, nor the same Bash command outside the sandbox.
   const ruleKey = (agentKey, b) => `${agentKey}|${b.agent_id ?? ''}|${b.tool_name}|${canonical(b.tool_input ?? {})}`;
 
   const editOf = (id, agentKey, b, path) => ({
@@ -47,7 +47,7 @@ export function createPermissions({ broadcast, timeoutMs, isActive = () => true,
     edits.set(edit.path, [...list, edit].slice(-EDITS_PER_FILE));
   }
 
-  // Cambios de OTROS agentes al mismo archivo: aprobados mientras su autor sigue activo, o pendientes.
+  // Changes by OTHER agents to the same file: approved while their author is still active, or pending.
   function othersOn(edit) {
     const done = (edits.get(edit.path) ?? []).filter((e) => e.owner !== edit.owner && isActive(e.sessionId, e.agentId));
     const pending = [...waiting.values()].map((w) => w.edit).filter((e) => e?.path === edit.path && e.owner !== edit.owner);
@@ -77,7 +77,7 @@ export function createPermissions({ broadcast, timeoutMs, isActive = () => true,
       tool: b.tool_name, input: b.tool_input ?? {},
     };
 
-    // Primera vez que choca con estos cambios ajenos: que el agente los revise antes de preguntarte.
+    // First time it collides with these other agents' changes: have the agent review them before asking you.
     if (others.length && !reviewed.has(seen)) {
       reviewed.add(seen);
       broadcast({ ts: Date.now(), kind: 'permission', agentKey, body: { state: 'review', ...ids, path, with: others.map((o) => o.role) } });
@@ -96,7 +96,7 @@ export function createPermissions({ broadcast, timeoutMs, isActive = () => true,
       timer.unref();
       waiting.set(permId, { resolve, agentKey, ruleKey: key, timer, edit });
       broadcast({ ts: Date.now(), kind: 'permission', agentKey, body: { state: 'pending', permId, ...ids, ...(review && { review }) } });
-      // Claude cortó la petición (proceso detenido): la tarjeta no debe quedarse colgada.
+      // Claude cut the request short (process stopped): the card must not be left hanging.
       signal?.addEventListener('abort', () => settle(permId, 'deny', 'cancelled'), { once: true });
     });
   }

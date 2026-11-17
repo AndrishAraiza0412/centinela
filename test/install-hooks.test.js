@@ -1,3 +1,5 @@
+// Tests for the hook installer: merging and unmerging Centinela's hooks into Claude Code's settings.json without losing the user's own entries,
+// including the sandbox domain handling and the install/uninstall CLI.
 import { test } from 'node:test';
 import assert from 'node:assert/strict';
 import { spawnSync } from 'node:child_process';

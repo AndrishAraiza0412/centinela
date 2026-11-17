@@ -1,5 +1,5 @@
-// Añade/quita los hooks de observación de Centinela en el settings.json de Claude Code.
-// Las entradas propias se reconocen por su URL: no se añaden claves desconocidas al archivo.
+// Adds/removes Centinela's observation hooks in Claude Code's settings.json.
+// Our own entries are recognized by their URL: unknown keys are not added to the file.
 import { join } from 'node:path';
 import { claudeConfigDir } from './paths.js';
 
@@ -7,8 +7,8 @@ export const OBSERVED_EVENTS = [
   'SessionStart', 'SessionEnd', 'UserPromptSubmit', 'PreToolUse', 'PostToolUse',
   'PostToolUseFailure', 'SubagentStart', 'SubagentStop', 'Stop', 'StopFailure', 'Notification',
 ];
-// Solo el puerto de Centinela: un 127.0.0.1 a secas abriría al sandbox todos los servicios locales.
-// (Verificado: con '127.0.0.1:<puerto>' los hooks llegan; sin entrada reciben 403.)
+// Only Centinela's port: a bare 127.0.0.1 would open all local services to the sandbox.
+// (Verified: with '127.0.0.1:<port>' the hooks arrive; without the entry they get 403.)
 const OUR_DOMAIN = /^127\.0\.0\.1:\d+$/;
 const OUR_URL = /^http:\/\/127\.0\.0\.1:\d+\/hooks\/event$/;
 
@@ -38,7 +38,7 @@ export function merge(settings, hookToken, port) {
       hooks: [{ type: 'http', url: `http://127.0.0.1:${port}/hooks/event`, timeout: 2, headers: { Authorization: `Bearer ${hookToken}` } }],
     });
   }
-  // Con el sandbox activo, los hooks http a 127.0.0.1 reciben 403 si el dominio no está permitido (spike).
+  // With the sandbox active, http hooks to 127.0.0.1 get 403 if the domain is not allowed (spike).
   if (s.sandbox?.enabled === true) {
     const domains = ((s.sandbox.network ??= {}).allowedDomains ??= []);
     if (!domains.includes(`127.0.0.1:${port}`)) domains.push(`127.0.0.1:${port}`);
@@ -46,7 +46,7 @@ export function merge(settings, hookToken, port) {
   return s;
 }
 
-// removeDomain: solo si fue Centinela quien añadió 127.0.0.1 (lo sabe el CLI, no el archivo).
+// removeDomain: only if Centinela was the one that added 127.0.0.1 (the CLI knows, not the file).
 export function unmerge(settings, { removeDomain = false } = {}) {
   const s = structuredClone(settings);
   removeOurHooks(s);

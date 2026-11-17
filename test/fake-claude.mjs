@@ -1,8 +1,8 @@
 #!/usr/bin/env node
-// Imita `claude -p --input-format stream-json --output-format stream-json` para los tests.
+// Imitates `claude -p --input-format stream-json --output-format stream-json` for the tests.
 import { createInterface } from 'node:readline';
 
-// `node --test` también recoge este archivo: fuera del lanzador no hace nada.
+// `node --test` also picks up this file: outside the launcher it does nothing.
 if (!process.env.CENTINELA_AGENT_KEY) process.exit(0);
 
 const sessionId = `fake-${process.pid}`;
@@ -12,7 +12,7 @@ process.stderr.write('fake-claude: listo\n');
 
 for await (const line of createInterface({ input: process.stdin })) {
   const msg = JSON.parse(line);
-  // Como el real: con entrada por stream-json, system/init se repite en cada turno.
+  // Like the real one: with stream-json input, system/init repeats on every turn.
   out({ type: 'system', subtype: 'init', session_id: sessionId, cwd: process.cwd(), permissionMode: process.env.FAKE_PERMISSION_MODE ?? 'default', argv: process.argv.slice(2), agentKey: process.env.CENTINELA_AGENT_KEY, userEnv: process.env.CENTINELA_TEST_USER_ENV, agentTeams: process.env.CLAUDE_CODE_EXPERIMENTAL_AGENT_TEAMS });
   out({ type: 'assistant', message: { role: 'assistant', content: [{ type: 'text', text: msg.message.content }] }, parent_tool_use_id: null, session_id: sessionId });
 }

@@ -155,7 +155,7 @@ test('pending permission remembers which launched agent asked', () => {
   assert.equal(s.pending.p1.agentKey, 'k1');
 });
 
-// ---------- revisión final ----------
+// ---------- final review ----------
 const launchRec = (ts, agentKey, body) => ({ ts, kind: 'launch', agentKey, body });
 const permRec = (ts, agentKey, body) => ({ ts, kind: 'permission', agentKey, body });
 

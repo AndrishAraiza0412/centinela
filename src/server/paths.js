@@ -7,7 +7,7 @@ export function home() {
   return process.env.CENTINELA_HOME || join(homedir(), '.centinela');
 }
 
-// Carpeta de configuración de Claude Code (settings.json, agents/).
+// Claude Code configuration folder (settings.json, agents/).
 export function claudeConfigDir() {
   return process.env.CLAUDE_CONFIG_DIR || join(homedir(), '.claude');
 }

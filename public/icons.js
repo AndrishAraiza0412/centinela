@@ -1,7 +1,7 @@
-// Iconos de trazo único (24×24, stroke 1.75), construidos con createElementNS (sin inyectar HTML).
+// Single-stroke icons (24×24, stroke 1.75), built with createElementNS (no HTML injection).
 const NS = 'http://www.w3.org/2000/svg';
 
-// Cada icono es una lista de [elemento, atributos].
+// Each icon is a list of [element, attributes].
 const ICONS = {
   logo: [['circle', { cx: 12, cy: 5, r: 2.2 }], ['circle', { cx: 5, cy: 18.5, r: 2.2 }], ['circle', { cx: 19, cy: 18.5, r: 2.2 }],
     ['path', { d: 'M12 7.2v4.3M12 11.5 6.6 16.8M12 11.5l5.4 5.3M7.2 18.5h9.6' }]],

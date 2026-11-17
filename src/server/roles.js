@@ -3,10 +3,10 @@ import { join } from 'node:path';
 import { fileURLToPath } from 'node:url';
 import { claudeConfigDir } from './paths.js';
 
-// Un nombre de rol termina como argumento de `--agent`: nunca puede parecer una bandera.
+// A role name ends up as an argument of `--agent`: it can never look like a flag.
 export const SAFE_ROLE = /^[A-Za-z0-9][\w.-]*$/;
 
-// Roles que trae Centinela (roles/*.md). Se pasan con `--agents` solo al lanzarlos: no tocan tu config.
+// Roles that Centinela ships (roles/*.md). They are passed with `--agents` only when launching: they do not touch your config.
 const BUILTIN_DIR = fileURLToPath(new URL('../../roles/', import.meta.url));
 
 const TOOL_LISTS = new Set(['tools', 'disallowedTools']);
@@ -45,9 +45,9 @@ function readRoles(dir, source) {
     .map((fm) => ({ ...fm, description: fm.description ?? '', source }));
 }
 
-// Definiciones para `claude --agents`: los agentes lanzados no cargan los ajustes de usuario, así
-// que ni los roles incluidos ni los del usuario existen para `--agent` si no se pasan aquí.
-// Con el mismo nombre gana el del usuario, igual que en listRoles.
+// Definitions for `claude --agents`: launched agents do not load user settings, so
+// neither the bundled roles nor the user's exist for `--agent` unless they are passed here.
+// With the same name the user's wins, as in listRoles.
 export function inlineAgents(names) {
   const roles = [...readRoles(BUILTIN_DIR, 'centinela'), ...readRoles(join(claudeConfigDir(), 'agents'), 'user')];
   return Object.fromEntries(roles
@@ -61,11 +61,11 @@ export function inlineAgents(names) {
     }]));
 }
 
-// cwd ya validado (absoluto, real) por quien llama.
-// Un rol del proyecto con el mismo nombre que uno tuyo no se lista: `--agent nombre` podría
-// ejecutar la definición del repo mientras el panel muestra la tuya. El tuyo queda marcado
-// como conflicto y no se puede lanzar ahí. Un rol incluido cede ante uno tuyo o del proyecto
-// con su nombre (sin `--agents`, `--agent nombre` ejecuta el de ellos).
+// cwd already validated (absolute, real) by the caller.
+// A project role with the same name as one of yours is not listed: `--agent name` could
+// run the repo's definition while the dashboard shows yours. Yours is marked
+// as a conflict and cannot be launched there. A bundled role yields to one of yours or the project's
+// with its name (without `--agents`, `--agent name` runs theirs).
 export function listRoles(cwd) {
   const user = readRoles(join(claudeConfigDir(), 'agents'), 'user');
   const project = cwd ? readRoles(join(cwd, '.claude', 'agents'), 'project') : [];

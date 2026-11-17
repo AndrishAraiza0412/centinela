@@ -1,3 +1,4 @@
+// Tests for the event store: file and directory permissions, skipping corrupt lines and loading only today's and yesterday's history.
 import { test } from 'node:test';
 import assert from 'node:assert/strict';
 import { mkdtempSync, writeFileSync, statSync } from 'node:fs';

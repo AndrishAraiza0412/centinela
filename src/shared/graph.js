@@ -1,4 +1,4 @@
-// Eventos → estado del grafo. Puro y sin imports: lo usan el servidor y el navegador.
+// Events → graph state. Pure and import-free: used by both the server and the browser.
 
 const DELEGATION_TOOL = 'Agent';
 const MAX_SUMMARY = 80;
@@ -6,11 +6,11 @@ const MAX_MESSAGES = 200;
 const MAX_ACTIONS = 500;
 export const ACTIVE = new Set(['idle', 'working', 'waiting']);
 const RESERVED = new Set(['__proto__', 'constructor', 'prototype']);
-// Un id que viene de un evento nunca puede ser un nombre heredado de Object.prototype.
+// An id that comes from an event can never be a name inherited from Object.prototype.
 const safeId = (id) => typeof id === 'string' && id !== '' && !RESERVED.has(id);
 
-// `delegations`: PreToolUse de Agent aún sin su SubagentStart. Va en el State porque el
-// navegador sigue reduciendo sobre el snapshot de /api/state.
+// `delegations`: PreToolUse of Agent that has no SubagentStart yet. It goes in the State because the
+// browser keeps reducing over the /api/state snapshot.
 export function initState() {
   return { nodes: {}, edges: [], pending: {}, delegations: [] };
 }
@@ -22,7 +22,7 @@ export function nodeId(sessionId, agentId) {
 const basename = (p) => String(p ?? '').split('/').pop();
 const clip = (s) => (s.length > MAX_SUMMARY ? s.slice(0, MAX_SUMMARY - 1) + '…' : s);
 
-// Lo que la tarjeta de permiso muestra: sin recortar ni abreviar rutas (lo aprobado debe verse entero).
+// What the permission card shows: without trimming or abbreviating paths (what is approved must be seen in full).
 export function describePermission(toolName, input = {}) {
   const i = input ?? {};
   if (toolName === 'Bash') return `Bash: ${i.command ?? ''}`;
@@ -33,8 +33,8 @@ export function describePermission(toolName, input = {}) {
   return path ? `${toolName} ${path}` : `${toolName} ${JSON.stringify(i)}`;
 }
 
-// Hace visibles los caracteres que engañan a la vista (bidi, ancho cero, control) y los
-// tramos largos de espacios que empujan el resto del comando fuera de la caja.
+// Makes visible the characters that fool the eye (bidi, zero-width, control) and the
+// long runs of spaces that push the rest of the command out of the box.
 export function reveal(text) {
   let suspicious = false;
   const out = String(text)
@@ -73,8 +73,8 @@ function ensureMain(state, sessionId, cwd, ts) {
   return state.nodes[id];
 }
 
-// Nodo al que pertenece un evento de hook; crea principal e hijo si faltan. Un hijo nace
-// colgado del principal (arista sin etiqueta); SubagentStart la corrige si sabe quién delegó.
+// Node a hook event belongs to; creates the main and the child if missing. A child is born
+// hanging from the main (edge without a label); SubagentStart corrects it if it knows who delegated.
 function nodeFor(state, b, ts) {
   const main = ensureMain(state, b.session_id, b.cwd, ts);
   if (!b.agent_id) return main;
@@ -92,7 +92,7 @@ function end(node, status, ts) {
   node.endedAt = ts;
 }
 
-// Fin de una sesión: ningún nodo suyo puede seguir "trabajando" (subagentes incluidos).
+// End of a session: none of its nodes can keep "working" (subagents included).
 function endSession(state, sessionId, status, ts) {
   for (const n of Object.values(state.nodes)) {
     if (n.sessionId === sessionId && ACTIVE.has(n.status)) end(n, status, ts);
@@ -141,7 +141,7 @@ function reduceHook(state, b, ts) {
     case 'PostToolUseFailure': {
       const action = node.actions.find((a) => a.toolUseId === b.tool_use_id);
       if (action) Object.assign(action, { ok: b.hook_event_name === 'PostToolUse', endedAt: ts });
-      // Una delegación que terminó (o falló) ya no puede emparejarse con un SubagentStart futuro.
+      // A delegation that ended (or failed) can no longer be paired with a future SubagentStart.
       if (b.tool_name === DELEGATION_TOOL) dropDelegation(state, (q) => q.toolUseId === b.tool_use_id);
       break;
     }
@@ -165,7 +165,7 @@ function reduceHook(state, b, ts) {
 
 function reducePermission(state, agentKey, b, ts) {
   if (b.state === 'review') {
-    // Centinela devolvió el cambio al agente para que revise el de otro agente sobre el mismo archivo.
+    // Centinela handed the change back to the agent so it reviews another agent's change to the same file.
     const others = Array.isArray(b.with) ? b.with.join(', ') : 'otro agente';
     pushAction(nodeFor(state, b, ts), { ts, tool: 'Revisión', summary: clip(`Revisa el cambio de ${others} en ${basename(b.path)}`), ok: null, toolUseId: '' });
     return;
@@ -182,7 +182,7 @@ function reducePermission(state, agentKey, b, ts) {
   delete state.pending[b.permId];
   const node = state.nodes[p.nodeId];
   if (!node) return;
-  // Solo "esperando" cambia: un agente ya terminado no revive por una cancelación tardía.
+  // Only "waiting" changes: a finished agent does not come back to life because of a late cancellation.
   if (node.status === 'waiting') {
     const next = Object.values(state.pending).find((q) => q.nodeId === node.id);
     node.status = next ? 'waiting' : 'working';
@@ -198,15 +198,15 @@ function reducePermission(state, agentKey, b, ts) {
 const launchedNode = (state, agentKey) => Object.values(state.nodes).find((n) => n.launched === agentKey);
 
 function addMessage(node, msg) {
-  node.msgSeq = (node.msgSeq ?? 0) + 1; // la UI lo usa como firma: la longitud se estanca en el tope
+  node.msgSeq = (node.msgSeq ?? 0) + 1; // the UI uses it as a signature: the length stalls at the cap
   (node.messages ??= []).push(msg);
   if (node.messages.length > MAX_MESSAGES) node.messages.shift();
 }
 
-// Conversación de un agente lanzado: solo el texto del hilo principal (no el de sus subagentes).
+// Conversation of a launched agent: only the main thread's text (not its subagents').
 function reduceStream(state, agentKey, b, ts) {
   if (b.type === 'result' && typeof b.total_cost_usd === 'number') {
-    // Estimación que reporta claude -p (con suscripción no es un cobro).
+    // Estimate reported by claude -p (with a subscription it is not a charge).
     const node = launchedNode(state, agentKey);
     if (node) node.usage = { ...node.usage, costUsd: b.total_cost_usd };
     return;
@@ -215,7 +215,7 @@ function reduceStream(state, agentKey, b, ts) {
   const node = launchedNode(state, agentKey);
   const u = b.message?.usage;
   if (node && u) {
-    // Tamaño del contexto en la última llamada del hilo principal.
+    // Context size at the last call of the main thread.
     const contextTokens = (u.input_tokens ?? 0) + (u.cache_read_input_tokens ?? 0) + (u.cache_creation_input_tokens ?? 0);
     node.usage = { ...node.usage, contextTokens };
   }
@@ -238,11 +238,11 @@ function reduceLaunch(state, agentKey, b, ts) {
     return;
   }
   if (b.event === 'exited') {
-    // Detenido por el usuario (stopped) no es un error aunque salga por señal.
+    // Stopped by the user (stopped) is not an error even if it exits by signal.
     const status = b.code === 0 || b.stopped ? 'done' : 'error';
     let nodes = Object.values(state.nodes).filter((n) => n.launched === agentKey);
     if (!nodes.length) {
-      // Murió antes de system/init (claude ausente, sin sesión, rol rechazado): que se vea igual.
+      // Died before system/init (claude missing, no session, role rejected): make it look the same.
       const id = `launch:${agentKey}`;
       state.nodes[id] = makeNode(id, '', null, b.role ?? 'agente', b.cwd ?? '', ts);
       state.nodes[id].launched = agentKey;
